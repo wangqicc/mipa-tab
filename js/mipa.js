@@ -227,6 +227,11 @@ class MipaTabManager {
 
             // Check if it's an open tab
             if (dragData.isOpenTab) {
+                // Check if tab with same URL already exists in the collection
+                if (this.isTabUrlExists(collectionId, dragData.url)) {
+                    console.log('Tab with the same URL already exists in the collection');
+                    return;
+                }
                 // Create tab data from open tab
                 const tabData = {
                     id: `tab-${Date.now()}`,
@@ -655,6 +660,31 @@ class MipaTabManager {
         tabItem.appendChild(url);
         return tabItem;
     }
+    // Check if a tab with the same URL already exists in the collection
+    isTabUrlExists(collectionId, url) {
+        const collection = this.collections.find(col => col.id === collectionId);
+        if (collection) {
+            // Normalize URL by removing trailing slashes and hash fragments for comparison
+            const normalizeUrl = (url) => {
+                try {
+                    const parsedUrl = new URL(url);
+                    parsedUrl.hash = '';
+                    if (parsedUrl.pathname.endsWith('/')) {
+                        parsedUrl.pathname = parsedUrl.pathname.slice(0, -1);
+                    }
+                    return parsedUrl.href;
+                } catch {
+                    return url;
+                }
+            };
+            const normalizedTargetUrl = normalizeUrl(url);
+            return collection.tabs.some(tab => {
+                const normalizedTabUrl = normalizeUrl(tab.url);
+                return normalizedTabUrl === normalizedTargetUrl;
+            });
+        }
+        return false;
+    }
     // Toggle collection expand/collapse
     toggleCollection(collectionId) {
         // Find the collection element in DOM
@@ -688,6 +718,11 @@ class MipaTabManager {
             // Get current active tab
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
+                // Check if tab with same URL already exists in the collection
+                if (this.isTabUrlExists(collectionId, currentTab.url)) {
+                    console.log('Tab with the same URL already exists in the collection');
+                    return;
+                }
                 const tabData = {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
