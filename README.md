@@ -35,11 +35,20 @@
 
 #### 使用 GitHub Gist（推荐）
 
-1. 点击主界面中的 "SYNC GIST" 按钮
+1. 点击主界面中的 "Connect to Gist" 按钮
 2. 出现提示时，输入具有 `gist` 权限的 GitHub Personal Access Token
-3. 您的数据将同步到新的私有 Gist
-4. 在其他设备上，安装扩展程序并再次点击 "SYNC GIST"
-5. 输入相同的 GitHub token 即可在设备间同步数据
+3. 系统会检查是否已有 Mipa gist：
+   - 如果有，会加载并合并数据
+   - 如果没有，会创建新的私有 gist
+4. 数据会自动同步到 gist，按钮文本变为 "Gist Connected ✓ Synced"
+5. 在其他设备上，安装扩展程序并再次点击 "Connect to Gist" 按钮
+6. 输入相同的 GitHub token，系统会找到并使用同一个 gist
+7. 数据会自动在设备间同步
+
+**注意**：
+- 您的数据会自动同步到 gist，无需手动操作
+- 可以点击 "Gist Connected ✓ Synced" 按钮登出 gist
+- 登出后按钮会恢复为 "Connect to Gist Not Synced"
 
 #### 手动导出/导入
 
