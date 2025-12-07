@@ -1,0 +1,1435 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #ffffff;
+    color: #333333;
+    line-height: 1.6;
+    font-size: 14px;
+}
+/* Container */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+/* Quick Actions */
+.quick-actions {
+    display: flex;
+    gap: 20px;
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+.quick-action-btn:hover {
+    background-color: #f0f2f5;
+    border-color: #0071e3;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.2);
+}
+.quick-action-icon {
+    font-size: 24px;
+    margin-bottom: 5px;
+    color: #0071e3;
+}
+.quick-action-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: #333333;
+}
+/* Toby Header Styles */
+.mipa-header {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 20px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    height: auto;
+    min-height: 60px;
+}
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.logo {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333333;
+    margin: 0;
+}
+.collection-count {
+    font-size: 12px;
+    color: #666666;
+    margin: 0;
+}
+.top-buttons {
+    display: flex;
+    gap: 10px;
+}
+.header-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+.search-section {
+    flex: 1;
+    margin-right: 10px;
+}
+.header-left {
+    display: none;
+}
+.header-center {
+    display: none;
+}
+.header-right {
+    display: none;
+}
+.action-btn {
+    background: none;
+    border: none;
+    color: #666666;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.action-btn:hover {
+    background-color: #f5f5f5;
+    color: #333333;
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+/* Button Styles */
+.btn-primary {
+    background-color: #0071e3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+/* Collection Name Editing Styles */
+.collection-name-container {
+    display: inline-block;
+    position: relative;
+}
+.collection-edit-name {
+    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: white;
+    padding: 4px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.collection-name-input {
+    padding: 6px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    width: 200px;
+}
+.collection-name-input:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+.btn-save {
+    background-color: #0071e3;
+    color: white;
+}
+.btn-save:hover {
+    background-color: #0077ed;
+}
+.btn-primary:hover {
+    background-color: #0077ed;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+}
+/* Search Area */
+.search-area {
+    display: none;
+}
+.search-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    border: 1px solid #e0e0e0;
+}
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    margin-left: 10px;
+}
+.collection-search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: #333;
+}
+.collection-search-input::placeholder {
+    color: #999;
+}
+.search-btn {
+    background-color: transparent;
+    border: none;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.search-btn:hover {
+    background-color: #f0f2f5;
+    color: #0071e3;
+}
+/* Main Content */
+.mipa-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background-color: #fafafa;
+    position: relative;
+}
+/* Collections Area */
+.collections-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: visible;
+    padding: 20px;
+    background-color: transparent;
+    position: relative;
+    z-index: 1;
+}
+/* Sidebar Trigger Area */
+.sidebar-trigger {
+    width: 8px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+}
+.sidebar-trigger:hover {
+    background-color: #e0e0e0;
+}
+/* Collection Styles */
+.collection {
+    margin-bottom: 16px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: visible;
+    box-shadow: 0 1px 3px rgba(242, 206, 206, 0.05);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+/* Collection Color Styles */
+.collection-color-gray,
+.collection-item.collection-color-gray {
+    background-color: rgba(142, 142, 147, 0.1);
+    border-color: rgba(142, 142, 147, 0.3);
+}
+
+.collection-color-red,
+.collection-item.collection-color-red {
+    background-color: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.3);
+}
+
+.collection-color-orange,
+.collection-item.collection-color-orange {
+    background-color: rgba(255, 149, 0, 0.1);
+    border-color: rgba(255, 149, 0, 0.3);
+}
+
+.collection-color-yellow,
+.collection-item.collection-color-yellow {
+    background-color: rgba(255, 204, 0, 0.1);
+    border-color: rgba(255, 204, 0, 0.3);
+}
+
+.collection-color-green,
+.collection-item.collection-color-green {
+    background-color: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.3);
+}
+
+.collection-color-blue,
+.collection-item.collection-color-blue {
+    background-color: rgba(0, 122, 255, 0.1);
+    border-color: rgba(0, 122, 255, 0.3);
+}
+
+.collection-color-purple,
+.collection-item.collection-color-purple {
+    background-color: rgba(175, 82, 222, 0.1);
+    border-color: rgba(175, 82, 222, 0.3);
+}
+
+.collection-item.collection-color-white {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(200, 200, 200, 0.3);
+}
+
+/* Popup-specific collection item styles */
+.collection-item {
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.collection-item:hover {
+    transform: translateX(2px);
+}
+
+/* Color Picker Styles */
+.collection-actions {
+    display: flex;
+    gap: 12px;
+    position: relative;
+    align-items: center;
+}
+
+/* Color picker container */
+.color-picker-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    background-color: rgb(0, 0, 0, 0.05);
+    color: #666666;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    margin: 0;
+    vertical-align: middle;
+}
+
+.color-picker-container:hover {
+    background-color: rgb(0, 0, 0, 0.1);
+}
+
+/* Show dropdown on hover */
+.color-picker-container:hover .color-picker-dropdown {
+    display: grid;
+}
+
+/* Color label with icon */
+.color-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666666;
+    display: inline;
+    margin: 0;
+}
+
+.color-label i {
+    font-size: 14px;
+    color: #0071e3;
+}
+
+/* Color dot button */
+.btn-color-picker {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    order: -1; /* Color dot before text */
+    box-sizing: border-box;
+}
+
+/* Color dot hover effect */
+.color-picker-container:hover .btn-color-picker {
+    transform: scale(1.1);
+}
+
+/* Color picker dropdown */
+.color-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgb(255, 255, 255, 0.5);
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: none;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    min-width: 140px;
+}
+
+/* Ensure hover rule overrides display: none */
+.color-picker-container:hover .color-picker-dropdown {
+    display: grid !important;
+}
+
+/* Color options */
+.color-option {
+    width: 26px;
+    height: 26px;
+    border: 2px solid #e0e0e0;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.color-option:hover {
+    transform: scale(1.15);
+    border-color: #0071e3;
+}
+
+/* Color option selected state */
+.color-option.selected {
+    border: 3px solid #0071e3;
+    box-shadow: 0 0 0 1px white;
+}
+
+/* Ensure white color has consistent border */
+.color-option.color-white {
+    background-color: white;
+    /* Always maintain a visible border */
+    border-color: #e0e0e0 !important;
+}
+
+.color-gray {
+    background-color: #8e8e93;
+}
+
+.color-red {
+    background-color: #ff3b30;
+}
+
+.color-orange {
+    background-color: #ff9500;
+}
+
+.color-yellow {
+    background-color: #ffcc00;
+}
+
+.color-green {
+    background-color: #34c759;
+}
+
+.color-blue {
+    background-color: #007aff;
+}
+
+.color-purple {
+    background-color: #af52de;
+}
+.collection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    /* Removed any potential left padding that might cause unnecessary space */
+    padding-left: 16px;
+}
+
+/* Hide border when collapsed */
+.collection.collapsed .collection-header {
+    border-bottom: none;
+}
+.collection-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+.collection-title-container {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Reduced gap to remove unnecessary space */
+    /* Removed any potential left padding/margin to ensure expander is at the left */
+    padding-left: 0;
+    margin-left: 0;
+}
+.collection-expander {
+    margin-right: 0;
+    font-size: 10px;
+    color: #666666;
+    font-weight: bold;
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.collection-header:hover .collection-expander {
+    color: #333333;
+}
+.collection-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333333;
+    margin: 0;
+}
+.collection-tab-count {
+    font-size: 14px;
+    color: #666666;
+    font-weight: 400;
+}
+.collection-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.collection-action-btn {
+    background: none;
+    border: none;
+    color: #666666;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+.collection-action-btn:hover {
+    background-color: #e0e0e0;
+    color: #333333;
+}
+.add-tab-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+/* Tabs Grid */
+.tabs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 240px);
+    gap: 12px;
+    padding: 16px;
+    /* Ensure grid doesn't clip tooltips */
+    overflow: visible;
+    clip-path: none;
+    border: none;
+    box-shadow: none;
+}
+/* Drag and Drop Styles */
+.tab-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+.open-tab-item.dragging {
+    opacity: 0.5;
+    transform: translateX(-10px);
+    box-shadow: 0 5px 15px rgba(0, 113, 227, 0.3);
+    background-color: rgba(0, 113, 227, 0.1);
+}
+.collection.drag-over,
+.tabs-grid.drag-over {
+    background-color: rgba(0, 113, 227, 0.1);
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+/* Tab Card Styles */
+.tab-card {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: auto;
+    min-height: 120px;
+    padding: 8px;
+}
+.tab-card:hover {
+    border-color: #0071e3;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.15);
+    /* Removed transform: translateY(-1px); to remove zoom effect */
+}
+/* Drag and drop styles */
+.tab-card.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+.tab-card.drag-over {
+    border-color: #0071e3;
+    box-shadow: inset 0 0 0 2px rgba(0, 113, 227, 0.3);
+    background-color: rgba(0, 113, 227, 0.05);
+}
+/* Container drag over style */
+.tabs-grid.drag-over {
+    background-color: rgba(0, 113, 227, 0.03);
+    border: 2px dashed #0071e3;
+    border-radius: 8px;
+}
+.tab-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+/* Circular action buttons */
+.tab-action-btn {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: none;
+    color: #666;
+}
+/* Show action buttons only when hovering over tab card */
+.tab-card:hover .tab-action-btn {
+    opacity: 1;
+    visibility: visible;
+}
+/* Add padding only when hovering to avoid space when buttons are hidden */
+.tab-card:hover .tab-card-header {
+    padding-right: 30px; /* Add padding to make room for delete button */
+}
+/* Add padding to tab-description only when hovering to avoid space when buttons are hidden */
+.tab-card:hover .tab-description {
+    padding-right: 60px; /* Add padding to make room for action buttons */
+}
+/* Action buttons container at bottom right */
+.action-buttons-container {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+/* Button container for positioning */
+.btn-container {
+    position: relative;
+    display: inline-block;
+}
+/* Copy button - circular */
+.btn-copy-tab {
+    position: relative;
+    color: #4caf50;
+    background-color: rgba(192, 247, 192, 0.1);
+}
+.btn-copy-tab:hover {
+    color: #4caf50;
+    transform: translateY(-1px);
+    background-color: rgba(192, 247, 192, 0.3);
+}
+/* Edit button - circular */
+.btn-edit-tab {
+    position: relative;
+    color: #1976d2;
+    background-color: rgba(132, 198, 246, 0.1);
+}
+.btn-edit-tab:hover {
+    color: #1976d2;
+    transform: translateY(-1px);
+    background-color: rgba(132, 198, 246, 0.3);
+}
+/* Ensure icons are centered and sized correctly */
+.tab-action-btn i {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1;
+}
+/* Button hover text - EXACTLY like the image */
+.tab-action-btn::after {
+    content: attr(data-text);
+    position: absolute;
+    bottom: -29px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #0071e3;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    /* Ensure tooltip is not clipped by parent containers */
+    clip-path: none;
+    overflow: visible;
+}
+/* Arrow for the tooltip - fixed to be triangular and properly positioned */
+.tab-action-btn::before {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: transparent;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid #0071e3;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 9999;
+    pointer-events: none;
+    /* Ensure arrow is not clipped by parent containers */
+    clip-path: none;
+    overflow: visible;
+}
+.tab-action-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+.tab-action-btn:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+/* Ensure tooltip is not clipped by tab-card */
+.tab-card {
+    overflow: visible !important;
+    clip-path: none !important;
+}
+/* Remove hover text from edit modal delete button */
+.btn-delete::after {
+    display: none;
+}
+.tab-favicon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.tab-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+    flex: 1;
+}
+.tab-url {
+    font-size: 12px;
+    color: #666666;
+    margin: 2px 0 4px 24px; /* Indent to align with title */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+/* Tab content container */
+.tab-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    transition: padding-bottom 0.2s ease;
+}
+/* Hover buttons - hidden by default, shown on tab hover */
+.tab-hover-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    opacity: 0;
+    visibility: hidden;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+/* Top right delete button */
+.btn-delete-tab {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: #d32f2f;
+    background-color: rgba(211, 47, 47, 0.1);
+}
+.btn-delete-tab:hover {
+    color: #d32f2f;
+    transform: translateY(-1px);
+    background-color: rgba(211, 47, 47, 0.2);
+}
+/* Bottom right action buttons */
+.tab-bottom-actions {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+/* Show all buttons on tab hover */
+.tab-card:hover .tab-hover-btn {
+    opacity: 1;
+    visibility: visible;
+}
+/* Open Tabs Sidebar */
+.open-tabs-sidebar {
+    width: 300px;
+    background-color: #ffffff;
+    border-left: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 20;
+}
+/* Show sidebar when hovering over trigger or sidebar itself */
+.sidebar-trigger:hover + .open-tabs-sidebar,
+.open-tabs-sidebar:hover {
+    transform: translateX(0);
+}
+.open-tabs-sidebar .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+.open-tabs-sidebar .sidebar-header h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+.close-sidebar {
+    display: none;
+}
+.window-tabs {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+.window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: #f0f2f5;
+    border-bottom: 1px solid #e0e0e0;
+    cursor: pointer;
+    user-select: none;
+}
+.window-header-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+.window-expander {
+    font-size: 10px;
+    color: #666666;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    width: 12px;
+    text-align: center;
+    user-select: none;
+}
+.window-expander.collapsed {
+    transform: rotate(-90deg);
+}
+.window-header h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+    margin: 0;
+}
+/* Collapsed state for window tabs */
+.window-tabs.collapsed .open-tabs-list {
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+    flex: 0;
+}
+/* Ensure smooth transition for expand/collapse */
+.open-tabs-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 0;
+    transition: all 0.3s ease;
+    max-height: 500px; /* Set a reasonable max height for scrolling */
+    height: auto; /* Allow height to adjust based on content */
+}
+.open-tab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+.open-tab-item:hover {
+    background-color: #f5f5f5;
+    border-left-color: #0071e3;
+}
+.open-tab-favicon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.open-tab-title {
+    font-size: 12px;
+    color: #333333;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.open-tab-url {
+    font-size: 10px;
+    color: #999999;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+.modal-content {
+    background-color: white;
+    margin: 15% auto;
+    padding: 24px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
+}
+/* Edit tab modal specific styles */
+.edit-tab-modal-content {
+    max-width: 600px;
+    padding: 0;
+    overflow: hidden;
+}
+.edit-tab-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    z-index: 10;
+}
+/* Form styles */
+#edit-tab-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+/* Enlarge favicon in edit tab modal */
+#edit-tab-form .tab-favicon {
+    width: 32px;
+    height: 32px;
+}
+/* Favicon container styling */
+.tab-favicon-container {
+    padding: 0;
+}
+.form-group {
+    margin-bottom: 0;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #333333;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 16px;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+/* Form actions */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0;
+    padding-top: 12px;
+    border-top: 1px solid #e0e0e0;
+}
+/* Right-aligned action buttons */
+.form-actions-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+/* Delete button */
+.btn-delete {
+    background: none;
+    border: none;
+    color: #d32f2f;
+    background-color: rgba(211, 47, 47, 0.1);
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+/* Ensure Font Awesome icons are properly sized */
+.btn-delete i {
+    font-size: 14px;
+}
+.btn-delete:hover {
+    background-color: rgba(211, 47, 47, 0.2);
+}
+/* Cancel button */
+.btn-cancel {
+    background-color: #f0f0f0;
+    color: #666666;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: auto;
+    margin-left: auto;
+}
+.btn-cancel:hover {
+    background-color: #e0e0e0;
+    color: #333333;
+}
+/* Save button */
+.btn-save {
+    background-color: #0071e3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-save:hover {
+    background-color: #0077ed;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+}
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Backgroud Image Styles */
+#bg-image {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 200px;
+    height: auto;
+    opacity: 0.8;
+    z-index: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+/* General modal styles */
+.modal-content:not(.edit-tab-modal-content) h2 {
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333333;
+}
+.close {
+    color: #666666;
+    float: right;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    line-height: 1;
+}
+.close:hover {
+    color: #333333;
+}
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .open-tabs-sidebar {
+        width: 250px;
+    }
+    .tabs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+@media (max-width: 768px) {
+    .mipa-main {
+        flex-direction: column;
+    }
+    .sidebar-trigger {
+        display: none;
+    }
+    .open-tabs-sidebar {
+        width: 100%;
+        height: 300px;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+        position: relative;
+        transform: none;
+        box-shadow: none;
+    }
+    .action-buttons {
+        display: none;
+    }
+    .tabs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+}
+
+/* Add Collection Form Styles */
+.add-collection-form {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.add-collection-input-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.add-collection-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+}
+
+.add-collection-input:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+
+.add-collection-input::placeholder {
+    color: #999999;
+    font-style: italic;
+}
+
+.color-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666666;
+    white-space: nowrap;
+    margin-right: 12px;
+}
+
+.color-options {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.color-option {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.color-option.white {
+    background-color: #ffffff;
+    border-color: #e0e0e0;
+}
+
+.color-option.gray {
+    background-color: #8e8e93;
+}
+
+.color-option.red {
+    background-color: #ff3b30;
+}
+
+.color-option.orange {
+    background-color: #ff9500;
+}
+
+.color-option.yellow {
+    background-color: #ffcc00;
+}
+
+.color-option.green {
+    background-color: #34c759;
+}
+
+.color-option.blue {
+    background-color: #007aff;
+}
+
+.color-option.purple {
+    background-color: #af52de;
+}
+
+/* Hide radio buttons but keep them functional */
+.color-options input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    z-index: 1;
+}
+
+/* Show border for selected color */
+.color-options input[type="radio"]:checked + .color-option {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.3);
+}
+
+.empty-collection-message {
+    font-size: 12px;
+    color: #999999;
+    text-align: center;
+    padding: 8px 0;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 8px;
+}
+
+/* Make buttons in the form have consistent styling */
+.add-collection-form .btn-primary,
+.add-collection-form .btn-cancel {
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    min-width: 80px;
+}
+
+.add-collection-form .btn-primary {
+    background-color: #0071e3;
+    color: white;
+    border: none;
+}
+
+.add-collection-form .btn-primary:hover {
+    background-color: #0077ed;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+}
+
+.add-collection-form .btn-cancel {
+    background-color: #f0f0f0;
+    color: #666666;
+    border: none;
+}
+
+.add-collection-form .btn-cancel:hover {
+    background-color: #e0e0e0;
+    color: #333333;
+}
+
+/* Responsive adjustments for add collection form */
+@media (max-width: 768px) {
+    .add-collection-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .add-collection-input {
+        min-width: auto;
+    }
+    
+    .color-picker-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .color-label {
+        margin-bottom: 4px;
+    }
+}

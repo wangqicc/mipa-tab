@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mipa Tab Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Popup-specific styles */
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #ffffff;
+            width: 380px;
+            height: auto;
+            border-radius: 5px;
+        }
+        .popup-container {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            max-height: 330px;
+        }
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .popup-header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333333;
+            margin: 0;
+        }
+        /* Main Layout */
+        .popup-main {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+        .popup-right {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .open-mipa-btn {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .open-mipa-btn:hover {
+            background-color: #0077ed;
+            box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+        }
+        /* Search Area */
+        .search-container {
+            margin-bottom: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .collection-search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            box-sizing: border-box;
+        }
+        /* Collections List */
+        .collections-list {
+            flex: 1;
+            min-height: 0;
+            max-height: 330px;
+            overflow-y: auto;
+            margin-bottom: 0;
+        }
+        /* Remove scrollbar styling */
+        .collections-list::-webkit-scrollbar {
+            display: none;
+        }
+        /* Override collection-item styles to respect color */
+        .collection-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: calc(100% - 4px);
+            box-sizing: border-box;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        /* Ensure collection info doesn't overflow */
+        .collection-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        /* Ensure collection name truncates properly */
+        .collection-name {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            margin-right: 5px;
+        }
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup-container">
+        <header class="popup-header">
+            <h1>Mipa Tab Manager</h1>
+            <button id="open-mipa-full" class="open-mipa-btn">OPEN MIPA TAB</button>
+        </header>
+        <div class="popup-main">
+            <!-- Right Column - Collections -->
+            <div class="popup-right">
+                <div class="search-container">
+                    <input type="text" id="collection-search" placeholder="Search for collections or spaces" class="collection-search-input">
+                </div>
+                <!-- Collections List -->
+                <div id="collections-list" class="collections-list">
+                    <!-- Collections will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/lib/sortable.min.js"></script>
+    <script src="js/popup.js"></script>
+</body>
+</html>

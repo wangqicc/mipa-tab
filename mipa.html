@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mipa - Tab Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Top Navigation -->
+        <header class="mipa-header">
+            <div class="header-top">
+                <div class="logo-section">
+                    <h1 class="logo">My Collections</h1>
+                    <span id="collection-count" class="collection-count">0 collections</span>
+                </div>
+                <div class="top-buttons">
+                    <button id="connect-gist" class="btn-primary">Connect to Gist</button>
+                </div>
+            </div>
+            <div class="header-bottom">
+                <div class="search-section">
+                    <div class="search-container">
+                        <input type="text" id="collection-search" placeholder="Search for collections or spaces" class="collection-search-input">
+                        <button class="search-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="header-buttons">
+                    <button id="toggle-collections" class="btn-primary">EXPAND/COLLAPSE</button>
+                    <button id="add-collection" class="btn-primary">ADD COLLECTION</button>
+                    <button id="export-data" class="btn-primary">EXPORT</button>
+                    <button id="import-data" class="btn-primary">IMPORT</button>
+                    <input type="file" id="import-file-input" style="display: none;" accept=".json">
+                </div>
+            </div>
+        </header>
+        <!-- Main Content -->
+        <main class="mipa-main">
+            <!-- Collections Area -->
+            <div class="collections-area">
+                <!-- Add Collection Form -->
+                <div id="add-collection-form" class="add-collection-form" style="display: none;">
+                    <div class="add-collection-input-group">
+                        <input type="text" id="new-collection-name" placeholder="type the collection title" class="add-collection-input">
+                        <button type="button" id="cancel-add-collection" class="btn-cancel">CANCEL</button>
+                        <button type="button" id="save-add-collection" class="btn-primary">SAVE</button>
+                    </div>
+                    <div class="color-picker-container">
+                        <span class="color-label">Color</span>
+                        <div class="color-options">
+                            <input type="radio" id="color-white" name="collection-color" value="white" checked>
+                            <label for="color-white" class="color-option white"></label>
+                            <input type="radio" id="color-gray" name="collection-color" value="gray">
+                            <label for="color-gray" class="color-option gray"></label>
+                            <input type="radio" id="color-red" name="collection-color" value="red">
+                            <label for="color-red" class="color-option red"></label>
+                            <input type="radio" id="color-orange" name="collection-color" value="orange">
+                            <label for="color-orange" class="color-option orange"></label>
+                            <input type="radio" id="color-yellow" name="collection-color" value="yellow">
+                            <label for="color-yellow" class="color-option yellow"></label>
+                            <input type="radio" id="color-green" name="collection-color" value="green">
+                            <label for="color-green" class="color-option green"></label>
+                            <input type="radio" id="color-blue" name="collection-color" value="blue">
+                            <label for="color-blue" class="color-option blue"></label>
+                            <input type="radio" id="color-purple" name="collection-color" value="purple">
+                            <label for="color-purple" class="color-option purple"></label>
+                        </div>
+                    </div>
+                </div>
+                <!-- Collections will be dynamically added here -->
+                <div id="collections-container"></div>
+            </div>
+            <!-- Sidebar Trigger Area -->
+            <div class="sidebar-trigger"></div>
+            <!-- Open Tabs Sidebar -->
+            <aside class="open-tabs-sidebar">
+                <div class="sidebar-header">
+                    <h3>OPEN TABS</h3>
+                </div>
+                <div id="windows-container">
+                    <!-- Windows will be dynamically added here -->
+                </div>
+            </aside>
+        </main>
+    </div>
+    <!-- Modal for Tab Editing -->
+    <div id="edit-tab-modal" class="modal">
+        <div class="modal-content edit-tab-modal-content">
+            <span class="close edit-tab-close">&times;</span>
+            <form id="edit-tab-form">
+                <div class="form-group tab-favicon-container">
+                    <img id="edit-tab-favicon" class="tab-favicon" src="" alt="Tab favicon">
+                </div>
+                <div class="form-group">
+                    <label for="edit-title">Title</label>
+                    <input type="text" id="edit-title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-description">Description</label>
+                    <textarea id="edit-description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-url">URL:</label>
+                    <input type="url" id="edit-url" name="url" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="delete-tab-btn" class="btn-delete"><i class="fas fa-trash"></i>Delete</button>
+                    <div class="form-actions-right">
+                        <button type="button" id="cancel-edit-btn" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-primary btn-save">Done</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Backgroud Image -->
+    <img id="bg-image" src="img/mipa.jpg">
+    <script src="js/lib/sortable.min.js"></script>
+    <script src="js/mipa.js"></script>
+</body>
+</html>
