@@ -21,6 +21,8 @@ class MipaTabManager {
         await this.loadCollections();
         // Load open tabs
         await this.loadOpenTabs();
+        // Load expansion states
+        this.expansionStates = await this.loadExpansionStates();
         // Update collection count
         this.updateCollectionCount();
         // Render collections and open tabs first
@@ -66,8 +68,10 @@ class MipaTabManager {
     // Save collections to storage
     async saveCollections() {
         try {
-            // Save to local storage
+            // Save collections data
             await chrome.storage.local.set({ collections: this.collections });
+            // Save expansion states of all collections
+            await this.saveExpansionStates();
 
             // Auto-sync to Gist if token and gistId are available
             const result = await chrome.storage.local.get(['githubToken', 'gistId']);
@@ -84,6 +88,31 @@ class MipaTabManager {
         } catch (error) {
             // Silent error handling for storage, but log sync errors
             console.error('Error in saveCollections:', error);
+        }
+    }
+    // Save expansion states of all collections to storage
+    async saveExpansionStates() {
+        try {
+            const expansionStates = {};
+            const existingCollections = document.querySelectorAll('.collection');
+            existingCollections.forEach(colElement => {
+                const collectionId = colElement.dataset.collectionId;
+                const isExpanded = colElement.classList.contains('expanded');
+                expansionStates[collectionId] = isExpanded;
+            });
+            await chrome.storage.local.set({ collectionExpansionStates: expansionStates });
+        } catch (error) {
+            console.error('Error saving expansion states:', error);
+        }
+    }
+    // Load expansion states from storage
+    async loadExpansionStates() {
+        try {
+            const result = await chrome.storage.local.get('collectionExpansionStates');
+            return result.collectionExpansionStates || {};
+        } catch (error) {
+            console.error('Error loading expansion states:', error);
+            return {};
         }
     }
     // Load open tabs from Chrome
@@ -125,11 +154,27 @@ class MipaTabManager {
     renderCollections() {
         const container = document.getElementById('collections-container');
         if (!container) return;
+
+        // Save expansion state of all collections from DOM before re-rendering
+        const domExpansionStates = new Map();
+        const existingCollections = document.querySelectorAll('.collection');
+        existingCollections.forEach(colElement => {
+            const collectionId = colElement.dataset.collectionId;
+            const isExpanded = colElement.classList.contains('expanded');
+            domExpansionStates.set(collectionId, isExpanded);
+        });
+
         container.innerHTML = '';
         // Get filtered collections
         const filteredCollections = this.filterCollections();
         filteredCollections.forEach(collection => {
-            const collectionElement = this.createCollectionElement(collection);
+            // Get expansion state from DOM if available, otherwise from storage, otherwise default to expanded
+            const isExpanded = domExpansionStates.has(collection.id)
+                ? domExpansionStates.get(collection.id)
+                : (this.expansionStates && this.expansionStates[collection.id] !== undefined)
+                    ? this.expansionStates[collection.id]
+                    : true;
+            const collectionElement = this.createCollectionElement(collection, isExpanded);
             container.appendChild(collectionElement);
         });
         // Update collection count
@@ -205,9 +250,9 @@ class MipaTabManager {
     }
 
     // Create a collection element
-    createCollectionElement(collection) {
+    createCollectionElement(collection, isExpanded) {
         const collectionDiv = document.createElement('div');
-        collectionDiv.className = `collection collection-color-${collection.color} ${collection.isExpanded ? 'expanded' : 'collapsed'}`;
+        collectionDiv.className = `collection collection-color-${collection.color} ${isExpanded ? 'expanded' : 'collapsed'}`;
         collectionDiv.dataset.collectionId = collection.id;
         collectionDiv.dataset.color = collection.color;
         // Collection header
@@ -220,7 +265,7 @@ class MipaTabManager {
         const expander = document.createElement('span');
         expander.className = 'collection-expander';
         // Set icon based on expansion state
-        expander.textContent = collection.isExpanded ? '▼' : '▶';
+        expander.textContent = isExpanded ? '▼' : '▶';
         // Collection name - create editable container
         const nameContainer = document.createElement('div');
         nameContainer.className = 'collection-name-container';
@@ -348,7 +393,7 @@ class MipaTabManager {
         // Tabs grid
         const tabsGrid = document.createElement('div');
         tabsGrid.className = 'tabs-grid';
-        tabsGrid.style.display = collection.isExpanded ? 'grid' : 'none';
+        tabsGrid.style.display = isExpanded ? 'grid' : 'none';
         tabsGrid.id = `tabs-grid-${collection.id}`;
         // Render tabs
         collection.tabs.forEach(tab => {
@@ -612,11 +657,29 @@ class MipaTabManager {
     }
     // Toggle collection expand/collapse
     toggleCollection(collectionId) {
-        const collection = this.collections.find(col => col.id === collectionId);
-        if (collection) {
-            collection.isExpanded = !collection.isExpanded;
-            this.renderCollections();
-            this.saveCollections();
+        // Find the collection element in DOM
+        const collectionDiv = document.querySelector(`[data-collection-id="${collectionId}"]`);
+        if (collectionDiv) {
+            // Toggle expanded/collapsed class
+            const isExpanded = collectionDiv.classList.contains('expanded');
+            collectionDiv.classList.toggle('expanded');
+            collectionDiv.classList.toggle('collapsed');
+            // Update expander icon
+            const expander = collectionDiv.querySelector('.collection-expander');
+            if (expander) {
+                expander.textContent = isExpanded ? '▶' : '▼';
+            }
+            // Show/hide tabs grid
+            const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+            if (tabsGrid) {
+                tabsGrid.style.display = isExpanded ? 'none' : 'grid';
+            }
+            // Update expansion states in memory and save to storage
+            if (!this.expansionStates) {
+                this.expansionStates = {};
+            }
+            this.expansionStates[collectionId] = !isExpanded;
+            this.saveExpansionStates();
         }
     }
     // Add a tab to a collection
@@ -1024,7 +1087,6 @@ class MipaTabManager {
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
-            isExpanded: true,
             tabs: [],
             color: color // Add color property
         };
@@ -1036,15 +1098,53 @@ class MipaTabManager {
     }
     // Toggle all collections
     toggleAllCollections() {
-        // Check if any collection is expanded
-        const hasExpanded = this.collections.some(col => col.isExpanded);
-        // Toggle all collections to opposite state
-        this.collections.forEach(col => {
-            col.isExpanded = !hasExpanded;
+        // Check if any collection is expanded in DOM
+        const hasExpanded = document.querySelector('.collection.expanded') !== null;
+        // Toggle all collections in DOM
+        const allCollections = document.querySelectorAll('.collection');
+        // Initialize expansion states if not exists
+        if (!this.expansionStates) {
+            this.expansionStates = {};
+        }
+        allCollections.forEach(collectionDiv => {
+            const collectionId = collectionDiv.dataset.collectionId;
+            const isCurrentlyExpanded = collectionDiv.classList.contains('expanded');
+            if (hasExpanded && isCurrentlyExpanded) {
+                // Collapse if currently expanded and we're collapsing all
+                collectionDiv.classList.remove('expanded');
+                collectionDiv.classList.add('collapsed');
+                // Update expander icon
+                const expander = collectionDiv.querySelector('.collection-expander');
+                if (expander) {
+                    expander.textContent = '▶';
+                }
+                // Hide tabs grid
+                const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+                if (tabsGrid) {
+                    tabsGrid.style.display = 'none';
+                }
+                // Update expansion state in memory
+                this.expansionStates[collectionId] = false;
+            } else if (!hasExpanded && !isCurrentlyExpanded) {
+                // Expand if currently collapsed and we're expanding all
+                collectionDiv.classList.remove('collapsed');
+                collectionDiv.classList.add('expanded');
+                // Update expander icon
+                const expander = collectionDiv.querySelector('.collection-expander');
+                if (expander) {
+                    expander.textContent = '▼';
+                }
+                // Show tabs grid
+                const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+                if (tabsGrid) {
+                    tabsGrid.style.display = 'grid';
+                }
+                // Update expansion state in memory
+                this.expansionStates[collectionId] = true;
+            }
         });
-        // Save and re-render
-        this.saveCollections();
-        this.renderCollections();
+        // Save updated expansion states to storage
+        this.saveExpansionStates();
     }
     // Bind event listeners
     bindEventListeners() {
@@ -1343,7 +1443,6 @@ class MipaTabManager {
             gistCollections.forEach(gistCol => {
                 // Ensure all necessary fields are present
                 gistCol = {
-                    isExpanded: true,
                     color: 'white',
                     tabs: gistCol.tabs || [],
                     ...gistCol
@@ -1356,8 +1455,7 @@ class MipaTabManager {
                         ...localCol,
                         // Update collection properties from gist (except tabs)
                         name: gistCol.name,
-                        color: gistCol.color,
-                        isExpanded: gistCol.isExpanded
+                        color: gistCol.color
                     };
 
                     // Create a map of existing tabs by ID for efficient lookup
@@ -1539,12 +1637,11 @@ class MipaTabManager {
                         });
 
                         return {
-                            id: collectionId,
-                            name: list.title,
-                            isExpanded: true,
-                            color: 'white', // Default color
-                            tabs: tabs
-                        };
+                        id: collectionId,
+                        name: list.title,
+                        color: 'white', // Default color
+                        tabs: tabs
+                    };
                     });
                 } else if (Array.isArray(importedData)) {
                     // Existing format - array of collections
@@ -1658,7 +1755,6 @@ class MipaTabManager {
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
-            isExpanded: true,
             color: 'white',
             tabs: []
         };
