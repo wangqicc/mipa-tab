@@ -167,21 +167,13 @@ class MipaPopup {
     }
     // Add a tab to a collection
     async addTabToCollection(collectionId) {
-        // Prevent multiple simultaneous calls
-        if (this.isAddingTab) {
-            return;
-        }
-
+        if (this.isAddingTab) return;
         this.isAddingTab = true;
-
         try {
-            // Get current active tab
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
-                // Check if tab is already in collection to prevent duplicates
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
-                    // Check if tab already exists in this collection
                     const isTabInCollection = this.collections[collectionIndex].tabs.some(tab => {
                         try {
                             const currentUrl = new URL(currentTab.url);
@@ -191,43 +183,38 @@ class MipaPopup {
                             return currentTab.url === tab.url;
                         }
                     });
-
                     if (isTabInCollection) {
                         this.showMessage('Tab already in collection!', 'error');
                         this.isAddingTab = false;
                         return;
                     }
-
                     const tabData = {
                         id: `tab-${Date.now()}`,
                         title: currentTab.title || 'Untitled',
-                        url: currentTab.url || '',
-                        favIconUrl: currentTab.favIconUrl || 'https://icons.duckduckgo.com/ip3/example.com.ico',
-                        createdAt: new Date().toISOString()
+                        description: currentTab.title || '',
+                        url: currentTab.url || ''
                     };
-
                     this.collections[collectionIndex].tabs.push(tabData);
-                    // Save to storage
-                    await chrome.storage.local.set({ collections: this.collections });
-
-                    // Auto-sync to Gist if token and gistId are available
-                    // Get GitHub Personal Access Token and gist id from storage
-                    const result = await chrome.storage.local.get(['githubToken', 'gistId']);
-                    if (result.githubToken && result.gistId) {
-                        try {
-                            const collectionsData = JSON.stringify(this.collections, null, 2);
-                            await this.updateGist(result.gistId, result.githubToken, collectionsData);
-                        } catch (syncError) {
-                            console.error('Error syncing to Gist:', syncError);
-                        }
-                    }
-
-                    // Refresh collections from memory (no need to reload from storage)
                     this.filterCollections();
                     await this.renderCollections();
-                    // Show success message
                     this.showMessage('Tab saved successfully!');
-                    // Save session data
+                    chrome.storage.local.set({ collections: this.collections }).catch(err => {
+                        console.error('Error saving to storage:', err);
+                    });
+                    chrome.storage.local.get(['githubToken', 'gistId']).then(result => {
+                        if (result.githubToken && result.gistId) {
+                            try {
+                                const collectionsData = JSON.stringify(this.collections, null, 2);
+                                this.updateGist(result.gistId, result.githubToken, collectionsData).catch(syncError => {
+                                    console.error('Error syncing to Gist:', syncError);
+                                });
+                            } catch (syncError) {
+                                console.error('Error preparing Gist sync:', syncError);
+                            }
+                        }
+                    }).catch(getErr => {
+                        console.error('Error getting Gist credentials:', getErr);
+                    });
                     this.saveSession(collectionId);
                 }
             }
@@ -235,7 +222,6 @@ class MipaPopup {
             console.error('Error adding tab to collection:', error);
             this.showMessage('Error saving tab', 'error');
         } finally {
-            // Always reset flag, even if there's an error
             this.isAddingTab = false;
         }
     }

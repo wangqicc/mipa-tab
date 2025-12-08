@@ -9,7 +9,12 @@ class MipaTabManager {
         this.draggingCard = null;
         this.originalCollectionId = null;
         this.originalCardIndex = null;
-
+        // Debounce timer for saving collections
+        this.saveTimer = null;
+        // Rendering throttle flag
+        this.rendering = false;
+        // Saving flag to prevent circular updates
+        this.isSaving = false;
         // Initialize the app
         this.init();
     }
@@ -37,8 +42,7 @@ class MipaTabManager {
 
         // Add storage change listener for real-time sync
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes.collections) {
-                // Reload collections and update UI
+            if (areaName === 'local' && changes.collections && !this.isSaving) {
                 this.loadCollections().then(() => {
                     this.updateCollectionCount();
                     this.renderCollections();
@@ -67,28 +71,37 @@ class MipaTabManager {
     }
     // Save collections to storage
     async saveCollections() {
-        try {
-            // Save collections data
-            await chrome.storage.local.set({ collections: this.collections });
-            // Save expansion states of all collections
-            await this.saveExpansionStates();
-
-            // Auto-sync to Gist if token and gistId are available
-            const result = await chrome.storage.local.get(['githubToken', 'gistId']);
-            if (result.githubToken && result.gistId) {
-                try {
-                    const collectionsData = JSON.stringify(this.collections, null, 2);
-                    await this.updateGist(result.gistId, result.githubToken, collectionsData);
-                    // Update sync status indicator
-                    this.checkGistLoginStatus();
-                } catch (syncError) {
-                    console.error('Error syncing to Gist:', syncError);
+        clearTimeout(this.saveTimer);
+        this.saveTimer = setTimeout(async () => {
+            try {
+                this.isSaving = true;
+                // Remove favIconUrl from tabs to optimize storage
+                const collectionsToSave = this.collections.map(collection => ({
+                    ...collection,
+                    tabs: collection.tabs.map(tab => {
+                        const { favIconUrl, ...tabWithoutFavIcon } = tab;
+                        return tabWithoutFavIcon;
+                    })
+                }));
+                await chrome.storage.local.set({ collections: collectionsToSave });
+                await this.saveExpansionStates();
+                // Gist sync
+                const result = await chrome.storage.local.get(['githubToken', 'gistId']);
+                if (result.githubToken && result.gistId) {
+                    try {
+                        const collectionsData = JSON.stringify(collectionsToSave, null, 2);
+                        await this.updateGist(result.gistId, result.githubToken, collectionsData);
+                        this.checkGistLoginStatus();
+                    } catch (syncError) {
+                        console.error('Error syncing to Gist:', syncError);
+                    }
                 }
+            } catch (error) {
+                console.error('Error in saveCollections:', error);
+            } finally {
+                this.isSaving = false;
             }
-        } catch (error) {
-            // Silent error handling for storage, but log sync errors
-            console.error('Error in saveCollections:', error);
-        }
+        }, 300);
     }
     // Save expansion states of all collections to storage
     async saveExpansionStates() {
@@ -152,35 +165,44 @@ class MipaTabManager {
     }
     // Render collections
     renderCollections() {
-        const container = document.getElementById('collections-container');
-        if (!container) return;
+        // Throttle rendering to once per animation frame
+        if (this.rendering) return;
+        this.rendering = true;
+        requestAnimationFrame(() => {
+            const container = document.getElementById('collections-container');
+            if (!container) {
+                this.rendering = false;
+                return;
+            }
 
-        // Save expansion state of all collections from DOM before re-rendering
-        const domExpansionStates = new Map();
-        const existingCollections = document.querySelectorAll('.collection');
-        existingCollections.forEach(colElement => {
-            const collectionId = colElement.dataset.collectionId;
-            const isExpanded = colElement.classList.contains('expanded');
-            domExpansionStates.set(collectionId, isExpanded);
-        });
+            // Save expansion state of all collections from DOM before re-rendering
+            const domExpansionStates = new Map();
+            const existingCollections = document.querySelectorAll('.collection');
+            existingCollections.forEach(colElement => {
+                const collectionId = colElement.dataset.collectionId;
+                const isExpanded = colElement.classList.contains('expanded');
+                domExpansionStates.set(collectionId, isExpanded);
+            });
 
-        container.innerHTML = '';
-        // Get filtered collections
-        const filteredCollections = this.filterCollections();
-        filteredCollections.forEach(collection => {
-            // Get expansion state from DOM if available, otherwise from storage, otherwise default to expanded
-            const isExpanded = domExpansionStates.has(collection.id)
-                ? domExpansionStates.get(collection.id)
-                : (this.expansionStates && this.expansionStates[collection.id] !== undefined)
-                    ? this.expansionStates[collection.id]
-                    : true;
-            const collectionElement = this.createCollectionElement(collection, isExpanded);
-            container.appendChild(collectionElement);
+            container.innerHTML = '';
+            // Get filtered collections
+            const filteredCollections = this.filterCollections();
+            filteredCollections.forEach(collection => {
+                // Get expansion state from DOM if available, otherwise from storage, otherwise default to expanded
+                const isExpanded = domExpansionStates.has(collection.id)
+                    ? domExpansionStates.get(collection.id)
+                    : (this.expansionStates && this.expansionStates[collection.id] !== undefined)
+                        ? this.expansionStates[collection.id]
+                        : true;
+                const collectionElement = this.createCollectionElement(collection, isExpanded);
+                container.appendChild(collectionElement);
+            });
+            // Update collection count
+            this.updateCollectionCount();
+            // Set up SortableJS drag and drop after rendering to ensure all new elements are draggable
+            this.setupSortableJS();
+            this.rendering = false;
         });
-        // Update collection count
-        this.updateCollectionCount();
-        // Set up SortableJS drag and drop after rendering to ensure all new elements are draggable
-        this.setupSortableJS();
     }
     // Handle drag over event for collections
     handleDragOver(e) {
@@ -237,15 +259,14 @@ class MipaTabManager {
                     id: `tab-${Date.now()}`,
                     title: dragData.title,
                     description: dragData.title, // Use title as default description
-                    url: dragData.url,
-                    favIconUrl: dragData.favIconUrl
+                    url: dragData.url
                 };
 
                 // Add tab to collection
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
-                    this.renderCollections();
+                    this.updateCollectionTabs(collectionId);
                     this.saveCollections();
                 }
             }
@@ -414,24 +435,6 @@ class MipaTabManager {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-collection-message';
             emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
-            emptyMessage.style.cssText = `
-                grid-column: 1 / -1;
-                padding: 40px 20px;
-                text-align: center;
-                color: #666666;
-                font-size: 14px;
-                font-style: italic;
-                border: 1px dashed #e0e0e0;
-                border-radius: 8px;
-                background-color: #fafafa;
-                min-height: 120px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0;
-                width: 100%;
-                box-sizing: border-box;
-            `;
             tabsGrid.appendChild(emptyMessage);
         } else {
             // For collections with tabs, use auto-fill columns
@@ -452,6 +455,19 @@ class MipaTabManager {
         collectionDiv.appendChild(tabsGrid);
         return collectionDiv;
     }
+    // Helper method to set up favicon with fallbacks
+    setupFavicon(faviconElement, tab) {
+        faviconElement.alt = tab.title;
+        try {
+            const hostname = new URL(tab.url).hostname;
+            faviconElement.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
+            faviconElement.onerror = function() {
+                this.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+            };
+        } catch (error) {
+            faviconElement.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+        }
+    }
     // Create a tab element
     createTabElement(tab, collectionId) {
         const tabCard = document.createElement('div');
@@ -466,8 +482,8 @@ class MipaTabManager {
         tabHeader.className = 'tab-card-header';
         const favicon = document.createElement('img');
         favicon.className = 'tab-favicon';
-        favicon.src = tab.favIconUrl;
-        favicon.alt = tab.title;
+        // Set up favicon with fallbacks
+        this.setupFavicon(favicon, tab);
         const title = document.createElement('h4');
         title.className = 'tab-title';
         title.textContent = tab.title;
@@ -625,8 +641,8 @@ class MipaTabManager {
         tabItem.draggable = true;
         const favicon = document.createElement('img');
         favicon.className = 'open-tab-favicon';
-        favicon.src = tab.favIconUrl;
-        favicon.alt = tab.title;
+        // Set up favicon with fallbacks
+        this.setupFavicon(favicon, tab);
         const title = document.createElement('span');
         title.className = 'open-tab-title';
         title.textContent = tab.title;
@@ -664,24 +680,17 @@ class MipaTabManager {
     isTabUrlExists(collectionId, url) {
         const collection = this.collections.find(col => col.id === collectionId);
         if (collection) {
-            // Normalize URL by removing trailing slashes and hash fragments for comparison
             const normalizeUrl = (url) => {
                 try {
                     const parsedUrl = new URL(url);
                     parsedUrl.hash = '';
-                    if (parsedUrl.pathname.endsWith('/')) {
-                        parsedUrl.pathname = parsedUrl.pathname.slice(0, -1);
-                    }
                     return parsedUrl.href;
                 } catch {
                     return url;
                 }
             };
             const normalizedTargetUrl = normalizeUrl(url);
-            return collection.tabs.some(tab => {
-                const normalizedTabUrl = normalizeUrl(tab.url);
-                return normalizedTabUrl === normalizedTargetUrl;
-            });
+            return collection.tabs.some(tab => normalizeUrl(tab.url) === normalizedTargetUrl);
         }
         return false;
     }
@@ -712,6 +721,45 @@ class MipaTabManager {
             this.saveExpansionStates();
         }
     }
+    // Update only the tabs in a specific collection (partial update for better performance)
+    updateCollectionTabs(collectionId) {
+        const collection = this.collections.find(col => col.id === collectionId);
+        if (!collection) return;
+        // Find the tabs grid element for this collection
+        const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+        if (!tabsGrid) return;
+        // Save current scroll position to restore later
+        const scrollTop = tabsGrid.scrollTop;
+        const scrollLeft = tabsGrid.scrollLeft;
+        // Clear the tabs grid and re-render only this collection's tabs
+        tabsGrid.innerHTML = '';
+        // Add tabs to the grid
+        collection.tabs.forEach(tab => {
+            const tabElement = this.createTabElement(tab, collectionId);
+            tabsGrid.appendChild(tabElement);
+        });
+        // Add empty collection message if no tabs
+        if (collection.tabs.length === 0) {
+            tabsGrid.style.gridTemplateColumns = '1fr';
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-collection-message';
+            emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
+            tabsGrid.appendChild(emptyMessage);
+        } else {
+            tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
+        }
+        // Restore scroll position
+        tabsGrid.scrollTop = scrollTop;
+        tabsGrid.scrollLeft = scrollLeft;
+        // Update tab count in collection header
+        const collectionDiv = document.querySelector(`[data-collection-id="${collectionId}"]`);
+        if (collectionDiv) {
+            const tabCountElement = collectionDiv.querySelector('.collection-tab-count');
+            if (tabCountElement) {
+                tabCountElement.textContent = ` | ${collection.tabs.length} tabs`;
+            }
+        }
+    }
     // Add a tab to a collection
     async addTabToCollection(collectionId) {
         try {
@@ -727,13 +775,12 @@ class MipaTabManager {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
                     description: currentTab.title || 'Untitled', // Use title as default description
-                    url: currentTab.url || '',
-                    favIconUrl: currentTab.favIconUrl || 'https://www.google.com/s2/favicons?domain=example.com'
+                    url: currentTab.url || ''
                 };
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
-                    this.renderCollections();
+                    this.updateCollectionTabs(collectionId);
                     this.saveCollections();
                     // Save session data for this collection
                     this.saveSession(collectionId);
@@ -837,7 +884,7 @@ class MipaTabManager {
             this.collections[collectionIndex].tabs = this.collections[collectionIndex].tabs.filter(
                 tab => tab.id !== tabId
             );
-            this.renderCollections();
+            this.updateCollectionTabs(collectionId);
             this.saveCollections();
         }
     }
@@ -891,8 +938,10 @@ class MipaTabManager {
             const [movedTab] = sourceCollection.tabs.splice(tabIndex, 1);
             // Add tab to target collection
             this.collections[targetIndex].tabs.push(movedTab);
-            // Save to storage
+            // Save and update only the affected collections
             this.saveCollections();
+            this.updateCollectionTabs(sourceCollectionId);
+            this.updateCollectionTabs(targetCollectionId);
         } catch (error) {
             console.error('Error moving tab between collections:', error);
         }
@@ -980,9 +1029,9 @@ class MipaTabManager {
                     tab.title = title;
                     tab.description = description;
                     tab.url = url;
-                    // Save and re-render
+                    // Save and update only the affected collection
                     this.saveCollections();
-                    this.renderCollections();
+                    this.updateCollectionTabs(collectionId);
                     // Close modal
                     modal.style.display = 'none';
                 }
@@ -1004,9 +1053,12 @@ class MipaTabManager {
                     // If source and target are the same, insert at the end (will be reordered based on DOM)
                     // If different, add to target collection
                     this.collections[targetIndex].tabs.push(movedTab);
-                    // Save and re-render
+                    // Save and update only the affected collections
                     this.saveCollections();
-                    this.renderCollections();
+                    this.updateCollectionTabs(sourceCollectionId);
+                    if (sourceCollectionId !== targetCollectionId) {
+                        this.updateCollectionTabs(targetCollectionId);
+                    }
                 }
             }
         } catch (error) {
@@ -1031,16 +1083,15 @@ class MipaTabManager {
                 const tabData = {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
-                    url: currentTab.url || '',
-                    favIconUrl: currentTab.favIconUrl || 'https://www.google.com/s2/favicons?domain=example.com',
-                    createdAt: new Date().toISOString()
+                    description: currentTab.title || '', // Use title as default description
+                    url: currentTab.url || ''
                 };
                 // Add tab to current collection
                 const collectionIndex = this.collections.findIndex(col => col.id === this.currentCollection);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
                     await this.saveCollections();
-                    this.renderCollections();
+                    this.updateCollectionTabs(this.currentCollection);
                     // Show success message
                     alert('Tab saved successfully!');
                 }
