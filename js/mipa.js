@@ -5,10 +5,6 @@ class MipaTabManager {
         this.openTabs = [];
         this.isInitialized = false;
         this.searchQuery = '';
-        // Drag and drop state
-        this.draggingCard = null;
-        this.originalCollectionId = null;
-        this.originalCardIndex = null;
         // Debounce timer for saving collections
         this.saveTimer = null;
         // Rendering throttle flag
@@ -78,10 +74,12 @@ class MipaTabManager {
                 // Remove favIconUrl from tabs to optimize storage
                 const collectionsToSave = this.collections.map(collection => ({
                     ...collection,
-                    tabs: collection.tabs.map(tab => {
-                        const { favIconUrl, ...tabWithoutFavIcon } = tab;
-                        return tabWithoutFavIcon;
-                    })
+                    tabs: collection.tabs.map(tab => ({
+                        id: tab.id,
+                        title: tab.title,
+                        url: tab.url,
+                        description: tab.description
+                    }))
                 }));
                 await chrome.storage.local.set({ collections: collectionsToSave });
                 await this.saveExpansionStates();
@@ -1031,39 +1029,12 @@ class MipaTabManager {
                     tab.url = url;
                     // Save and update only the affected collection
                     this.saveCollections();
-                    this.updateCollectionTabs(collectionId);
+                    this.updateCollectionTabs(this.currentEditingTab.collectionId);
                     // Close modal
                     modal.style.display = 'none';
                 }
             }
         });
-    }
-    // Move a tab from one collection to another or reorder within the same collection
-    moveTab(tabId, sourceCollectionId, targetCollectionId) {
-        try {
-            // Find the source collection
-            const sourceIndex = this.collections.findIndex(col => col.id === sourceCollectionId);
-            const targetIndex = this.collections.findIndex(col => col.id === targetCollectionId);
-            if (sourceIndex !== -1 && targetIndex !== -1) {
-                // Find the tab
-                const tabIndex = this.collections[sourceIndex].tabs.findIndex(tab => tab.id === tabId);
-                if (tabIndex !== -1) {
-                    // Move the tab
-                    const [movedTab] = this.collections[sourceIndex].tabs.splice(tabIndex, 1);
-                    // If source and target are the same, insert at the end (will be reordered based on DOM)
-                    // If different, add to target collection
-                    this.collections[targetIndex].tabs.push(movedTab);
-                    // Save and update only the affected collections
-                    this.saveCollections();
-                    this.updateCollectionTabs(sourceCollectionId);
-                    if (sourceCollectionId !== targetCollectionId) {
-                        this.updateCollectionTabs(targetCollectionId);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error moving tab:', error);
-        }
     }
     // Open a tab in the browser
     async openTab(url) {
@@ -1071,34 +1042,6 @@ class MipaTabManager {
             await chrome.tabs.create({ url });
         } catch (error) {
             console.error('Error opening tab:', error);
-        }
-    }
-    // Save current tab
-    async saveCurrentTab() {
-        try {
-            // Get current tab from the active window
-            const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (currentTab) {
-                // Create tab data
-                const tabData = {
-                    id: `tab-${Date.now()}`,
-                    title: currentTab.title || 'Untitled',
-                    description: currentTab.title || '', // Use title as default description
-                    url: currentTab.url || ''
-                };
-                // Add tab to current collection
-                const collectionIndex = this.collections.findIndex(col => col.id === this.currentCollection);
-                if (collectionIndex !== -1) {
-                    this.collections[collectionIndex].tabs.push(tabData);
-                    await this.saveCollections();
-                    this.updateCollectionTabs(this.currentCollection);
-                    // Show success message
-                    alert('Tab saved successfully!');
-                }
-            }
-        } catch (error) {
-            console.error('Error saving current tab:', error);
-            alert('Error saving tab: ' + error.message);
         }
     }
     // Focus an existing tab
@@ -1173,8 +1116,8 @@ class MipaTabManager {
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
-            tabs: [],
-            color: color // Add color property
+            color: color, // Add color property
+            tabs: []
         };
 
         this.collections.push(newCollection);
