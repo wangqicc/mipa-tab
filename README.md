@@ -10,7 +10,12 @@
 - 🖱️ 在集合间拖放标签页
 - 🔄 使用 GitHub Gist 在设备间实时同步
 - 💾 手动数据导出/导入功能
+- 📝 编辑标签页的标题、URL 和描述
 - 📱 用户友好的界面
+- 🗑️ 删除和重命名集合
+- 🔀 重新排序集合内的标签页
+- 📋 保存当前浏览器会话
+- 📊 在侧边栏管理所有打开的标签页
 
 ## 安装
 
@@ -31,24 +36,41 @@
 4. 点击集合中的标签页将其打开
 5. 使用搜索栏查找特定集合
 
+### 管理集合
+
+1. **创建集合**：点击 "ADD COLLECTION" 按钮，输入名称并选择颜色
+2. **编辑集合**：点击集合名称进入编辑模式
+3. **删除集合**：点击集合删除按钮
+4. **展开/折叠集合**：点击集合标题栏
+5. **批量管理**：使用 "Toggle All" 按钮展开或折叠所有集合
+
+### 管理标签页
+
+1. **添加标签页**：使用 "Add Current Tab" 按钮将当前标签页添加到集合
+2. **编辑标签页**：右键点击标签页并选择 "Edit Tab"
+3. **删除标签页**：点击标签页上的删除按钮
+4. **重新排序标签页**：在集合内拖放标签页
+5. **会话保存**：点击 "SAVE SESSION" 保存当前浏览器会话到集合
+
 ### 数据同步
 
 #### 使用 GitHub Gist（推荐）
 
 1. 点击主界面中的 "Connect to Gist" 按钮
-2. 出现提示时，输入具有 `gist` 权限的 GitHub Personal Access Token
-3. 系统会检查是否已有 Mipa gist：
+2. 在弹出的模态框中，输入具有 `gist` 权限的 GitHub Personal Access Token
+3. 点击 "Connect" 按钮
+4. 系统会检查是否已有 Mipa gist：
    - 如果有，会加载并合并数据
    - 如果没有，会创建新的私有 gist
-4. 数据会自动同步到 gist，按钮文本变为 "Gist Connected ✓ Synced"
-5. 在其他设备上，安装扩展程序并再次点击 "Connect to Gist" 按钮
-6. 输入相同的 GitHub token，系统会找到并使用同一个 gist
-7. 数据会自动在设备间同步
+5. 数据会自动同步到 gist，按钮文本变为 "Gist Connected"（绿色背景，带勾选图标）
+6. 在其他设备上，安装扩展程序并再次点击 "Connect to Gist" 按钮
+7. 输入相同的 GitHub token，系统会找到并使用同一个 gist
+8. 数据会自动在设备间同步
 
 **注意**：
 - 您的数据会自动同步到 gist，无需手动操作
-- 可以点击 "Gist Connected ✓ Synced" 按钮登出 gist
-- 登出后按钮会恢复为 "Connect to Gist Not Synced"
+- 可以点击 "Gist Connected" 按钮登出 gist
+- 登出后按钮会恢复为 "Connect to Gist"（蓝色背景，带 GitHub 图标）
 
 #### 手动导出/导入
 
@@ -87,6 +109,7 @@
 - 本地数据使用 Chrome 的 `chrome.storage.local` API 存储
 - GitHub Gist 数据存储在私有 Gist 中
 - 您的 GitHub token 存储在本地，绝不会与任何人共享
+- JSON 数据采用固定格式存储，确保跨设备同步的一致性
 
 ## 贡献
 
