@@ -970,11 +970,10 @@ class MipaTabManager {
         document.getElementById('edit-title').value = tab.title;
         document.getElementById('edit-description').value = tab.description || '';
         document.getElementById('edit-url').value = tab.url;
-        // Set favicon
+        // Set favicon using the setupFavicon function which has proper error handling
         const faviconElement = document.getElementById('edit-tab-favicon');
         if (faviconElement) {
-            faviconElement.src = tab.favIconUrl;
-            faviconElement.alt = tab.title;
+            this.setupFavicon(faviconElement, tab);
         }
         // Open the modal
         const modal = document.getElementById('edit-tab-modal');
@@ -1242,18 +1241,65 @@ class MipaTabManager {
                 const isLoggedIn = !!result.githubToken && !!result.gistId;
 
                 if (isLoggedIn) {
-                    // If logged in, ask for confirmation to logout
-                    const confirmLogout = confirm('Are you sure you want to logout from Gist?');
-                    if (confirmLogout) {
-                        await this.logoutFromGist();
-                        // Update button text after logout
-                        this.checkGistLoginStatus();
-                    }
+                    // If logged in, show logout confirmation modal
+                    this.showGistModal('logout');
                 } else {
-                    // If not logged in, perform login/sync
-                    await this.syncWithGist();
-                    // Update button text after login/sync
-                    this.checkGistLoginStatus();
+                    // If not logged in, show login modal
+                    this.showGistModal('login');
+                }
+            });
+        }
+        // Gist Modal Elements
+        this.gistModal = document.getElementById('gist-modal');
+        this.gistLoginForm = document.getElementById('gist-login-form');
+        this.gistLogoutConfirm = document.getElementById('gist-logout-confirm');
+        this.gistErrorMessage = document.getElementById('gist-error-message');
+        this.gistModalTitle = document.getElementById('gist-modal-title');
+        this.githubTokenInput = document.getElementById('github-token');
+        this.errorMessageText = document.getElementById('error-message-text');
+        // Gist Modal Buttons
+        this.gistCloseBtn = document.querySelector('.gist-modal-close');
+        this.gistConnectBtn = document.getElementById('gist-connect-btn');
+        this.gistCancelBtn = document.getElementById('gist-cancel-btn');
+        this.gistLogoutBtn = document.getElementById('gist-logout-btn');
+        this.gistCancelLogoutBtn = document.getElementById('gist-cancel-logout-btn');
+        this.gistCloseErrorBtn = document.getElementById('gist-close-error-btn');
+        // Add modal event listeners
+        if (this.gistCloseBtn) {
+            this.gistCloseBtn.addEventListener('click', () => {
+                this.closeGistModal();
+            });
+        }
+        if (this.gistCancelBtn) {
+            this.gistCancelBtn.addEventListener('click', () => {
+                this.closeGistModal();
+            });
+        }
+        if (this.gistCancelLogoutBtn) {
+            this.gistCancelLogoutBtn.addEventListener('click', () => {
+                this.closeGistModal();
+            });
+        }
+        if (this.gistConnectBtn) {
+            this.gistConnectBtn.addEventListener('click', async () => {
+                await this.handleGistConnect();
+            });
+        }
+        if (this.gistLogoutBtn) {
+            this.gistLogoutBtn.addEventListener('click', async () => {
+                await this.handleGistLogout();
+            });
+        }
+        if (this.gistCloseErrorBtn) {
+            this.gistCloseErrorBtn.addEventListener('click', () => {
+                this.closeGistModal();
+            });
+        }
+        // Close modal when clicking outside
+        if (this.gistModal) {
+            this.gistModal.addEventListener('click', (e) => {
+                if (e.target === this.gistModal) {
+                    this.closeGistModal();
                 }
             });
         }
@@ -1294,21 +1340,18 @@ class MipaTabManager {
     }
 
     // Gist Sync Methods
-    async syncWithGist(showAlerts = true) {
+    async syncWithGist(token = null, showAlerts = true) {
         try {
-            // Get GitHub Personal Access Token from storage
-            const result = await chrome.storage.local.get('githubToken');
-            let token = result.githubToken;
-
-            if (!token) {
-                if (showAlerts) {
-                    token = prompt('Please enter your GitHub Personal Access Token (with gist scope):');
-                    if (!token) return;
-                    // Save token to storage
-                    await chrome.storage.local.set({ githubToken: token });
-                } else {
-                    // If no token and no alerts, just return (automatic sync)
-                    return;
+            // Get GitHub Personal Access Token from storage or parameter
+            let githubToken = token;
+            if (!githubToken) {
+                const result = await chrome.storage.local.get('githubToken');
+                githubToken = result.githubToken;
+                if (!githubToken) {
+                    if (showAlerts) {
+                        // If no token provided and no alerts, just return
+                        return;
+                    }
                 }
             }
 
@@ -1318,64 +1361,166 @@ class MipaTabManager {
 
             if (gistId) {
                 // If gistId exists, load and merge data from gist
-                await this.loadFromGistAndMerge(showAlerts);
+                await this.loadFromGistAndMerge(showAlerts, githubToken);
             } else {
                 // If no gistId, check if user already has a Mipa gist
-                const existingGist = await this.findExistingMipaGist(token);
+                const existingGist = await this.findExistingMipaGist(githubToken);
                 if (existingGist) {
                     // Use existing gist
                     gistId = existingGist.id;
                     // Update gistId in storage
                     await chrome.storage.local.set({ gistId: gistId });
                     // Load and merge data from existing gist
-                    await this.loadFromGistAndMerge(showAlerts);
+                    await this.loadFromGistAndMerge(showAlerts, githubToken);
                 } else {
                     // If no existing gist, create new one with current data
                     const collectionsData = JSON.stringify(this.collections, null, 2);
-                    gistId = await this.createGist(token, collectionsData);
+                    gistId = await this.createGist(githubToken, collectionsData);
                     // Update gistId in storage
                     await chrome.storage.local.set({ gistId: gistId });
-                    if (showAlerts) {
-                        alert('Gist created successfully! Data synced.');
-                    }
                 }
             }
         } catch (error) {
             console.error('Error syncing with Gist:', error);
-            if (showAlerts) {
-                alert('Error syncing with Gist: ' + error.message);
+            throw error;
+        }
+    }
+    // Gist Modal Methods
+    showGistModal(mode, errorMessage = '') {
+        // Reset modal state
+        this.githubTokenInput.value = '';
+        if (mode === 'login') {
+            // Show login form
+            this.gistModalTitle.textContent = 'Connect to GitHub Gist';
+            this.gistLoginForm.style.display = 'block';
+            this.gistLogoutConfirm.style.display = 'none';
+            this.gistErrorMessage.style.display = 'none';
+        } else if (mode === 'logout') {
+            // Show logout confirmation
+            this.gistModalTitle.textContent = 'Logout from GitHub Gist';
+            this.gistLoginForm.style.display = 'none';
+            this.gistLogoutConfirm.style.display = 'block';
+            this.gistErrorMessage.style.display = 'none';
+        } else if (mode === 'error') {
+            // Show error message
+            this.gistModalTitle.textContent = 'Error';
+            this.gistLoginForm.style.display = 'none';
+            this.gistLogoutConfirm.style.display = 'none';
+            this.gistErrorMessage.style.display = 'block';
+            this.errorMessageText.textContent = errorMessage;
+        }
+        // Show modal
+        this.gistModal.style.display = 'block';
+        // Focus token input if in login mode
+        if (mode === 'login') {
+            this.githubTokenInput.focus();
+        }
+    }
+    closeGistModal() {
+        this.gistModal.style.display = 'none';
+        // Reset form
+        this.githubTokenInput.value = '';
+    }
+    async handleGistConnect() {
+        const token = this.githubTokenInput.value.trim();
+        if (!token) return;
+        this.gistConnectBtn.disabled = true;
+        this.gistConnectBtn.innerHTML = 'Connecting...';
+        try {
+            await chrome.storage.local.set({ githubToken: token });
+            await this.syncWithGist(token, true);
+            this.checkGistLoginStatus();
+            this.closeGistModal();
+        } catch (error) {
+            console.error('Error connecting to Gist:', error);
+            this.showGistModal('error', error.message);
+        } finally {
+            this.gistConnectBtn.disabled = false;
+            this.gistConnectBtn.innerHTML = 'Connect';
+        }
+    }
+    async handleGistLogout() {
+        try {
+            await this.logoutFromGist();
+            this.checkGistLoginStatus();
+            this.closeGistModal();
+        } catch (error) {
+            console.error('Error logging out from Gist:', error);
+            alert('Error logging out from Gist: ' + error.message);
+        }
+    }
+    // Update loadFromGistAndMerge to accept token parameter
+    async loadFromGistAndMerge(showAlerts = true, token = null) {
+        try {
+            // Get GitHub Personal Access Token and gist id from storage
+            const result = await chrome.storage.local.get(['githubToken', 'gistId']);
+            const gistToken = token || result.githubToken;
+            const gistId = result.gistId;
+            if (!gistToken || !gistId) return;
+            // Fetch gist data
+            const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+                headers: {
+                    'Authorization': `token ${gistToken}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch gist: ${response.status} ${response.statusText}`);
             }
+            const gist = await response.json();
+            const fileContent = gist.files['mipa-data.json'].content;
+            const gistCollections = JSON.parse(fileContent);
+            // Merge collections from gist
+            gistCollections.forEach(gistCol => {
+                const existingCollection = this.collections.find(col => col.id === gistCol.id);
+                if (existingCollection) {
+                    // Update existing collection
+                    existingCollection.title = gistCol.title;
+                    existingCollection.color = gistCol.color;
+                    existingCollection.expanded = gistCol.expanded;
+                    // Merge tabs
+                    const existingTabIds = new Set(existingCollection.tabs.map(tab => tab.id));
+                    gistCol.tabs.forEach(gistTab => {
+                        if (!existingTabIds.has(gistTab.id)) {
+                            existingCollection.tabs.push(gistTab);
+                        }
+                    });
+                } else {
+                    // Add new collection
+                    this.collections.push(gistCol);
+                }
+            });
+            // Save merged collections
+            await this.saveCollections();
+            // Update UI
+            this.renderCollections();
+            this.checkGistLoginStatus();
+        } catch (error) {
+            console.error('Error loading and merging from Gist:', error);
         }
     }
 
     // Check if user already has a Mipa gist
     async findExistingMipaGist(token) {
         try {
-            // Get all gists for the user
             const response = await fetch('https://api.github.com/gists', {
                 headers: {
                     'Authorization': `token ${token}`
                 }
             });
-
             if (!response.ok) {
-                throw new Error('Failed to fetch gists: ' + response.statusText);
+                const errorMsg = response.status === 401 ? 'Invalid or expired GitHub token' : `Failed to fetch gists: ${response.status} ${response.statusText}`;
+                throw new Error(errorMsg);
             }
-
             const gists = await response.json();
-
-            // Look for gist with description "Mipa Tab Manager Data" or containing "mipa-data.json" file
             for (const gist of gists) {
                 if (gist.description === 'Mipa Tab Manager Data' || gist.files['mipa-data.json']) {
                     return gist;
                 }
             }
-
-            // No existing Mipa gist found
             return null;
         } catch (error) {
             console.error('Error finding existing Mipa gist:', error);
-            return null;
+            throw error;
         }
     }
 
@@ -1398,7 +1543,8 @@ class MipaTabManager {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to create gist: ' + response.statusText);
+            const errorMsg = response.status === 401 ? 'Invalid or expired GitHub token' : `Failed to create gist: ${response.status} ${response.statusText}`;
+            throw new Error(errorMsg);
         }
 
         const gist = await response.json();
@@ -1530,9 +1676,6 @@ class MipaTabManager {
             this.updateCollectionCount();
             this.renderCollections();
 
-            if (showAlerts) {
-                alert('Data merged from Gist successfully!');
-            }
         } catch (error) {
             console.error('Error loading and merging from Gist:', error);
             if (showAlerts) {
@@ -1568,28 +1711,22 @@ class MipaTabManager {
             const fileContent = gist.files['mipa-data.json'].content;
             const collections = JSON.parse(fileContent);
 
-            // Update collections and save to local storage
             this.collections = collections;
             await this.saveCollections();
             this.updateCollectionCount();
             this.renderCollections();
-
-            alert('Data loaded from Gist successfully!');
         } catch (error) {
             console.error('Error loading from Gist:', error);
-            alert('Error loading from Gist: ' + error.message);
+            this.showGistModal('error', error.message);
         }
     }
 
     // Logout from Gist - clear token and gistId
     async logoutFromGist() {
         try {
-            // Clear GitHub token and gistId from storage
             await chrome.storage.local.remove(['githubToken', 'gistId']);
-            alert('Successfully logged out from Gist sync.');
         } catch (error) {
             console.error('Error logging out from Gist:', error);
-            alert('Error logging out from Gist: ' + error.message);
         }
     }
 
@@ -1602,9 +1739,23 @@ class MipaTabManager {
         const isLoggedIn = !!result.githubToken && !!result.gistId;
 
         if (isLoggedIn) {
-            connectGistBtn.innerHTML = 'Gist Connected <span class="sync-indicator" style="margin-left: 8px; font-size: 12px; color: #4CAF50;">✓ Synced</span>';
+            connectGistBtn.innerHTML = `
+                <div class="connect-status">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Gist Connected</span>
+                    <span class="status-indicator"></span>
+                </div>
+            `;
+            connectGistBtn.style.backgroundColor = '#4CAF50';
         } else {
-            connectGistBtn.innerHTML = 'Connect to Gist <span class="sync-indicator" style="margin-left: 8px; font-size: 12px; color: #9E9E9E;">Not Synced</span>';
+            connectGistBtn.innerHTML = `
+                <div class="connect-status">
+                    <i class="fa-brands fa-github"></i>
+                    <span>Connect to Gist</span>
+                    <span class="status-indicator not-synced"></span>
+                </div>
+            `;
+            connectGistBtn.style.backgroundColor = '#0071e3';
         }
     }
 

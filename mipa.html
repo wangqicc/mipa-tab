@@ -93,7 +93,10 @@
     <!-- Modal for Tab Editing -->
     <div id="edit-tab-modal" class="modal">
         <div class="modal-content edit-tab-modal-content">
-            <span class="close edit-tab-close">&times;</span>
+            <div class="modal-header">
+                <h2 id="edit-tab-title">Edit Tab</h2>
+                <span class="close edit-tab-close">&times;</span>
+            </div>
             <form id="edit-tab-form">
                 <div class="form-group tab-favicon-container">
                     <img id="edit-tab-favicon" class="tab-favicon" src="" alt="Tab favicon">
@@ -118,6 +121,51 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+    <!-- Modal for Gist Login, Logout and Error -->
+    <div id="gist-modal" class="modal">
+        <div class="modal-content gist-modal-content">
+            <div class="modal-header">
+                <h2 id="gist-modal-title">Connect to GitHub Gist</h2>
+                <span class="close gist-modal-close">&times;</span>
+            </div>
+            <!-- Login Form -->
+            <div id="gist-login-form" class="gist-modal-body">
+                <div class="form-group">
+                    <label for="github-token">GitHub Personal Access Token</label>
+                    <input type="password" id="github-token" name="github-token" placeholder="Enter your GitHub token with gist scope" required>
+                    <div class="token-hint">
+                        <p>You need a GitHub Personal Access Token with <strong>gist</strong> permissions. <a href="https://github.com/settings/tokens/new?scopes=gist" target="_blank">Create one here</a></p>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="gist-cancel-btn" class="btn-cancel">Cancel</button>
+                    <button type="button" id="gist-connect-btn" class="btn-primary">Connect</button>
+                </div>
+            </div>
+            <!-- Logout Confirmation -->
+            <div id="gist-logout-confirm" class="gist-modal-body" style="display: none;">
+                <div class="logout-warning">
+                    <i class="fa-solid fa-exclamation-circle"></i>
+                    <p>Are you sure you want to logout from GitHub Gist?</p>
+                    <p class="warning-text">You will no longer be able to sync your data across devices.</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="gist-cancel-logout-btn" class="btn-cancel">Cancel</button>
+                    <button type="button" id="gist-logout-btn" class="btn-delete">Logout</button>
+                </div>
+            </div>
+            <!-- Error Message -->
+            <div id="gist-error-message" class="gist-modal-body" style="display: none;">
+                <div class="error-warning">
+                    <i class="fa-solid fa-times-circle"></i>
+                    <p id="error-message-text"></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="gist-close-error-btn" class="btn-primary">OK</button>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Backgroud Image -->

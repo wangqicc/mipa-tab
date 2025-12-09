@@ -1029,18 +1029,41 @@ body {
 /* Edit tab modal specific styles */
 .edit-tab-modal-content {
     max-width: 600px;
-    padding: 0;
-    overflow: hidden;
+    padding: 20px;
+    overflow: visible;
 }
+
+.edit-tab-form {
+    padding: 0;
+}
+
+/* Ensure edit tab modal uses the same close button style */
 .edit-tab-close {
-    position: absolute;
-    top: 20px;
-    right: 24px;
+    position: relative;
+    top: 0;
+    right: 0;
+    float: none;
     z-index: 10;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666666;
+    transition: color 0.2s ease;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    width: 24px;
+}
+
+.edit-tab-close:hover {
+    color: #333333;
 }
 /* Form styles */
 #edit-tab-form {
-    padding: 20px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -1135,8 +1158,8 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    margin-right: auto;
-    margin-left: auto;
+    margin-right: 0;
+    margin-left: 0;
 }
 .btn-cancel:hover {
     background-color: #e0e0e0;
@@ -1182,6 +1205,239 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     pointer-events: none;
+}
+
+/* Modal Header Styles */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0 16px;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333333;
+    line-height: 1;
+    padding: 0;
+}
+
+/* Gist Modal Specific Styles */
+.gist-modal-content {
+    max-width: 500px;
+    padding: 20px;
+    overflow: visible;
+}
+
+.gist-modal-body {
+    padding: 0;
+}
+
+.gist-modal-close {
+    position: relative;
+    top: 0;
+    right: 0;
+    float: none;
+    z-index: 10;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666666;
+    transition: color 0.2s ease;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    width: 24px;
+}
+
+.gist-modal-close:hover {
+    color: #333333;
+}
+
+/* Token Input Styles */
+#github-token {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+}
+
+#github-token:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+}
+
+/* Token Hint Styles */
+.token-hint {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #666666;
+    box-sizing: border-box;
+}
+
+/* Form Actions Styles */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0;
+    margin: 0;
+    border-top: none;
+}
+
+.token-hint p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.token-hint a {
+    color: #0071e3;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.token-hint a:hover {
+    text-decoration: underline;
+}
+
+/* Logout Warning Styles */
+.logout-warning {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    background-color: #fff5f5;
+    border: 1px solid #ffccc7;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.logout-warning i {
+    font-size: 48px;
+    color: #ff4d4f;
+    margin-bottom: 16px;
+}
+
+.logout-warning p {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333333;
+}
+
+.logout-warning .warning-text {
+    font-size: 14px;
+    color: #666666;
+    margin: 0;
+}
+
+/* Error Warning Styles */
+.error-warning {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    background-color: #fff1f0;
+    border: 1px solid #ffa39e;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.error-warning i {
+    font-size: 48px;
+    color: #ff4d4f;
+    margin-bottom: 16px;
+}
+
+.error-warning p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333333;
+    line-height: 1.5;
+}
+
+/* Gist Button Styles */
+.gist-btn-container {
+    position: relative;
+}
+
+.gist-btn-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.gist-btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Connect Status Styles */
+#connect-gist {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+}
+
+.connect-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #34c759;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.not-synced {
+    background-color: #ff9500;
+}
+
+.status-indicator.error {
+    background-color: #ff3b30;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* General modal styles */
