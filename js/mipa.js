@@ -71,9 +71,11 @@ class MipaTabManager {
         this.saveTimer = setTimeout(async () => {
             try {
                 this.isSaving = true;
-                // Remove favIconUrl from tabs to optimize storage
+                // Remove favIconUrl from tabs to optimize storage and ensure fixed property order
                 const collectionsToSave = this.collections.map(collection => ({
-                    ...collection,
+                    id: collection.id,
+                    name: collection.name || collection.title,
+                    color: collection.color,
                     tabs: collection.tabs.map(tab => ({
                         id: tab.id,
                         title: tab.title,
@@ -772,8 +774,8 @@ class MipaTabManager {
                 const tabData = {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
-                    description: currentTab.title || 'Untitled', // Use title as default description
-                    url: currentTab.url || ''
+                    url: currentTab.url || '',
+                    description: currentTab.title || 'Untitled' // Use title as default description
                 };
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
@@ -1111,11 +1113,11 @@ class MipaTabManager {
         const selectedColor = document.querySelector('input[name="collection-color"]:checked');
         const color = selectedColor ? selectedColor.value : 'white';
 
-        // Create new collection with color
+        // Create new collection with color and fixed property order
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
-            color: color, // Add color property
+            color: color,
             tabs: []
         };
 
@@ -1473,20 +1475,36 @@ class MipaTabManager {
             gistCollections.forEach(gistCol => {
                 const existingCollection = this.collections.find(col => col.id === gistCol.id);
                 if (existingCollection) {
-                    // Update existing collection
-                    existingCollection.title = gistCol.title;
+                    // Update existing collection with fixed property order
+                    existingCollection.id = gistCol.id;
+                    existingCollection.name = gistCol.name || gistCol.title;
                     existingCollection.color = gistCol.color;
-                    existingCollection.expanded = gistCol.expanded;
-                    // Merge tabs
+                    // Merge tabs with fixed property order
                     const existingTabIds = new Set(existingCollection.tabs.map(tab => tab.id));
                     gistCol.tabs.forEach(gistTab => {
                         if (!existingTabIds.has(gistTab.id)) {
-                            existingCollection.tabs.push(gistTab);
+                            // Ensure tab has fixed property order when adding
+                            existingCollection.tabs.push({
+                                id: gistTab.id,
+                                title: gistTab.title,
+                                url: gistTab.url,
+                                description: gistTab.description
+                            });
                         }
                     });
                 } else {
-                    // Add new collection
-                    this.collections.push(gistCol);
+                    // Add new collection with fixed property order
+                    this.collections.push({
+                        id: gistCol.id,
+                        name: gistCol.name || gistCol.title,
+                        color: gistCol.color,
+                        tabs: gistCol.tabs.map(tab => ({
+                            id: tab.id,
+                            title: tab.title,
+                            url: tab.url,
+                            description: tab.description
+                        }))
+                    });
                 }
             });
             // Save merged collections

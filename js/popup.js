@@ -191,8 +191,8 @@ class MipaPopup {
                     const tabData = {
                         id: `tab-${Date.now()}`,
                         title: currentTab.title || 'Untitled',
-                        description: currentTab.title || '',
-                        url: currentTab.url || ''
+                        url: currentTab.url || '',
+                        description: currentTab.title || ''
                     };
                     this.collections[collectionIndex].tabs.push(tabData);
                     this.filterCollections();
