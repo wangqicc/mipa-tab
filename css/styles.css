@@ -1442,7 +1442,6 @@ body {
 
 /* General modal styles */
 .modal-content:not(.edit-tab-modal-content) h2 {
-    margin-bottom: 20px;
     font-size: 18px;
     font-weight: 600;
     color: #333333;

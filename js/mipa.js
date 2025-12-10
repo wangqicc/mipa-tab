@@ -39,12 +39,12 @@ class MipaTabManager {
         // Add storage change listener for real-time sync
         chrome.storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local' && changes.collections && !this.isSaving) {
-                this.loadCollections().then(() => {
-                    this.updateCollectionCount();
-                    this.renderCollections();
-                });
+                this.loadCollections().then(() => { this.updateCollectionCount(); this.renderCollections(); });
             }
         });
+        // Auto-sync with Gist on initialization if logged in
+        const gistResult = await chrome.storage.local.get(['githubToken', 'gistId']);
+        if (gistResult.githubToken && gistResult.gistId) { await this.syncWithGist(gistResult.githubToken, false); }
     }
     // Load collections from storage
     async loadCollections() {
@@ -71,29 +71,34 @@ class MipaTabManager {
         this.saveTimer = setTimeout(async () => {
             try {
                 this.isSaving = true;
-                // Remove favIconUrl from tabs to optimize storage and ensure fixed property order
-                const collectionsToSave = this.collections.map(collection => ({
-                    id: collection.id,
-                    name: collection.name || collection.title,
-                    color: collection.color,
-                    tabs: collection.tabs.map(tab => ({
-                        id: tab.id,
-                        title: tab.title,
-                        url: tab.url,
-                        description: tab.description
-                    }))
-                }));
-                await chrome.storage.local.set({ collections: collectionsToSave });
-                await this.saveExpansionStates();
-                // Gist sync
-                const result = await chrome.storage.local.get(['githubToken', 'gistId']);
-                if (result.githubToken && result.gistId) {
-                    try {
-                        const collectionsData = JSON.stringify(collectionsToSave, null, 2);
-                        await this.updateGist(result.gistId, result.githubToken, collectionsData);
-                        this.checkGistLoginStatus();
-                    } catch (syncError) {
-                        console.error('Error syncing to Gist:', syncError);
+                const now = new Date().toISOString();
+                const collectionsToSave = this.collections.map(collection => ({id: collection.id, name: collection.name || collection.title, color: collection.color, updatedAt: collection.updatedAt || now, tabs: collection.tabs.map(tab => ({id: tab.id, title: tab.title, url: tab.url, description: tab.description, updatedAt: tab.updatedAt || now}))}));
+                const currentResult = await chrome.storage.local.get('collections');
+                const currentCollections = currentResult.collections || [];
+                const collectionsToSaveStr = JSON.stringify(collectionsToSave);
+                const currentCollectionsStr = JSON.stringify(currentCollections);
+                if (collectionsToSaveStr !== currentCollectionsStr) {
+                    await chrome.storage.local.set({collections: collectionsToSave});
+                    await this.saveExpansionStates();
+                    const result = await chrome.storage.local.get(['githubToken', 'gistId']);
+                    if (result.githubToken && result.gistId) {
+                        try {
+                            const collectionsData = JSON.stringify(collectionsToSave, null, 2);
+                            const existingGist = await fetch(`https://api.github.com/gists/${result.gistId}`, {headers: {'Authorization': `token ${result.githubToken}`}});
+                            if (existingGist.ok) {
+                                const gistData = await existingGist.json();
+                                const existingContent = gistData.files['mipa-data.json'].content;
+                                if (collectionsData !== existingContent) {
+                                    await this.updateGist(result.gistId, result.githubToken, collectionsData);
+                                    this.checkGistLoginStatus();
+                                }
+                            } else {
+                                await this.updateGist(result.gistId, result.githubToken, collectionsData);
+                                this.checkGistLoginStatus();
+                            }
+                        } catch (syncError) {
+                            console.error('Error syncing to Gist:', syncError);
+                        }
                     }
                 }
             } catch (error) {
@@ -771,15 +776,19 @@ class MipaTabManager {
                     console.log('Tab with the same URL already exists in the collection');
                     return;
                 }
+                const now = new Date().toISOString();
                 const tabData = {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
                     url: currentTab.url || '',
-                    description: currentTab.title || 'Untitled' // Use title as default description
+                    description: currentTab.title || 'Untitled', // Use title as default description
+                    updatedAt: now
                 };
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
+                    // Update collection's updatedAt since tabs were added
+                    this.collections[collectionIndex].updatedAt = now;
                     this.updateCollectionTabs(collectionId);
                     this.saveCollections();
                     // Save session data for this collection
@@ -797,6 +806,7 @@ class MipaTabManager {
             const newName = prompt('Enter new collection name:', collection.name);
             if (newName && newName.trim() !== collection.name) {
                 collection.name = newName.trim();
+                collection.updatedAt = new Date().toISOString();
                 this.renderCollections();
                 this.saveCollections();
             }
@@ -806,6 +816,10 @@ class MipaTabManager {
     deleteCollection(collectionId) {
         if (confirm('Are you sure you want to delete this collection?')) {
             this.collections = this.collections.filter(col => col.id !== collectionId);
+            // Update other collections' updatedAt since structure changed
+            this.collections.forEach(collection => {
+                collection.updatedAt = new Date().toISOString();
+            });
             this.renderCollections();
             this.saveCollections();
         }
@@ -816,8 +830,9 @@ class MipaTabManager {
         const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
         if (collectionIndex === -1) return;
 
-        // Update collection color
+        // Update collection color and timestamp
         this.collections[collectionIndex].color = newColor;
+        this.collections[collectionIndex].updatedAt = new Date().toISOString();
 
         // Render collections to update UI
         this.renderCollections();
@@ -884,6 +899,8 @@ class MipaTabManager {
             this.collections[collectionIndex].tabs = this.collections[collectionIndex].tabs.filter(
                 tab => tab.id !== tabId
             );
+            // Update collection's updatedAt since its tabs changed
+            this.collections[collectionIndex].updatedAt = new Date().toISOString();
             this.updateCollectionTabs(collectionId);
             this.saveCollections();
         }
@@ -1018,20 +1035,19 @@ class MipaTabManager {
             e.preventDefault();
             if (this.currentEditingTab) {
                 const { collectionIndex, tabIndex } = this.currentEditingTab;
-                // Get form values
                 const title = document.getElementById('edit-title').value.trim();
                 const description = document.getElementById('edit-description').value.trim();
                 const url = document.getElementById('edit-url').value.trim();
                 if (title && url) {
-                    // Update tab data
+                    const now = new Date().toISOString();
                     const tab = this.collections[collectionIndex].tabs[tabIndex];
                     tab.title = title;
                     tab.description = description;
                     tab.url = url;
-                    // Save and update only the affected collection
+                    tab.updatedAt = now;
+                    this.collections[collectionIndex].updatedAt = now;
                     this.saveCollections();
                     this.updateCollectionTabs(this.currentEditingTab.collectionId);
-                    // Close modal
                     modal.style.display = 'none';
                 }
             }
@@ -1113,12 +1129,14 @@ class MipaTabManager {
         const selectedColor = document.querySelector('input[name="collection-color"]:checked');
         const color = selectedColor ? selectedColor.value : 'white';
 
-        // Create new collection with color and fixed property order
+        // Create new collection with color, fixed property order, and timestamp
+        const now = new Date().toISOString();
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
             color: color,
-            tabs: []
+            tabs: [],
+            updatedAt: now
         };
 
         this.collections.push(newCollection);
@@ -1376,7 +1394,21 @@ class MipaTabManager {
                     await this.loadFromGistAndMerge(showAlerts, githubToken);
                 } else {
                     // If no existing gist, create new one with current data
-                    const collectionsData = JSON.stringify(this.collections, null, 2);
+                    const now = new Date().toISOString();
+                    const collectionsToSave = this.collections.map(collection => ({
+                        id: collection.id,
+                        name: collection.name || collection.title,
+                        color: collection.color,
+                        updatedAt: collection.updatedAt || now,
+                        tabs: collection.tabs.map(tab => ({
+                            id: tab.id,
+                            title: tab.title,
+                            url: tab.url,
+                            description: tab.description,
+                            updatedAt: tab.updatedAt || now
+                        }))
+                    }));
+                    const collectionsData = JSON.stringify(collectionsToSave, null, 2);
                     gistId = await this.createGist(githubToken, collectionsData);
                     // Update gistId in storage
                     await chrome.storage.local.set({ gistId: gistId });
@@ -1632,34 +1664,81 @@ class MipaTabManager {
             const existingCollectionsMap = new Map(this.collections.map(col => [col.id, col]));
             const mergedCollections = [];
 
+            // Helper function to compare timestamps
+            const isNewer = (localItem, gistItem) => {
+                const localTime = localItem.updatedAt ? new Date(localItem.updatedAt) : new Date(0);
+                const gistTime = gistItem.updatedAt ? new Date(gistItem.updatedAt) : new Date(0);
+                return localTime > gistTime;
+            };
+
             // Merge collections from gist
             gistCollections.forEach(gistCol => {
-                // Ensure all necessary fields are present
+                // Ensure gist collection has fixed property order
                 gistCol = {
-                    color: 'white',
-                    tabs: gistCol.tabs || [],
-                    ...gistCol
+                    id: gistCol.id,
+                    name: gistCol.name || gistCol.title,
+                    color: gistCol.color || 'white',
+                    updatedAt: gistCol.updatedAt || new Date(0).toISOString(),
+                    tabs: (gistCol.tabs || []).map(tab => ({
+                        id: tab.id,
+                        title: tab.title,
+                        url: tab.url,
+                        description: tab.description,
+                        updatedAt: tab.updatedAt || new Date(0).toISOString()
+                    }))
                 };
 
                 if (existingCollectionsMap.has(gistCol.id)) {
-                    // Collection exists locally, merge tabs
+                    // Collection exists locally, merge tabs and properties based on timestamp
                     const localCol = existingCollectionsMap.get(gistCol.id);
+                    // Ensure local collection has fixed property order and timestamp
+                    const localColWithFixedOrder = {
+                        id: localCol.id,
+                        name: localCol.name || localCol.title,
+                        color: localCol.color,
+                        updatedAt: localCol.updatedAt || new Date(0).toISOString(),
+                        tabs: localCol.tabs.map(tab => ({
+                            id: tab.id,
+                            title: tab.title,
+                            url: tab.url,
+                            description: tab.description,
+                            updatedAt: tab.updatedAt || new Date(0).toISOString()
+                        }))
+                    };
+                    // Use the newer collection properties with fixed order
                     const mergedCol = {
-                        ...localCol,
-                        // Update collection properties from gist (except tabs)
-                        name: gistCol.name,
-                        color: gistCol.color
+                        id: gistCol.id,
+                        name: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.name : gistCol.name,
+                        color: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.color : gistCol.color,
+                        updatedAt: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.updatedAt : gistCol.updatedAt,
+                        tabs: []
                     };
 
                     // Create a map of existing tabs by ID for efficient lookup
                     const existingTabsMap = new Map(localCol.tabs.map(tab => [tab.id, tab]));
                     const mergedTabs = [];
 
-                    // Merge tabs from gist
+                    // Merge tabs from gist with fixed order
                     gistCol.tabs.forEach(gistTab => {
+                        // Ensure gist tab has fixed property order
+                        gistTab = {
+                            id: gistTab.id,
+                            title: gistTab.title,
+                            url: gistTab.url,
+                            description: gistTab.description,
+                            updatedAt: gistTab.updatedAt || new Date(0).toISOString()
+                        };
                         if (existingTabsMap.has(gistTab.id)) {
-                            // Tab exists locally, use gist tab (keep remote data as priority)
-                            mergedTabs.push(gistTab);
+                            // Tab exists locally, ensure it has fixed property order and use the newer tab
+                            const localTab = existingTabsMap.get(gistTab.id);
+                            const localTabWithFixedOrder = {
+                                id: localTab.id,
+                                title: localTab.title,
+                                url: localTab.url,
+                                description: localTab.description,
+                                updatedAt: localTab.updatedAt || new Date(0).toISOString()
+                            };
+                            mergedTabs.push(isNewer(localTabWithFixedOrder, gistTab) ? localTabWithFixedOrder : gistTab);
                             // Remove from existing tabs map to track remaining local tabs
                             existingTabsMap.delete(gistTab.id);
                         } else {
@@ -1668,8 +1747,16 @@ class MipaTabManager {
                         }
                     });
 
-                    // Add remaining local tabs (not in gist)
-                    existingTabsMap.forEach(tab => mergedTabs.push(tab));
+                    // Add remaining local tabs (not in gist), ensuring fixed property order
+                    existingTabsMap.forEach(tab => {
+                        mergedTabs.push({
+                            id: tab.id,
+                            title: tab.title,
+                            url: tab.url,
+                            description: tab.description,
+                            updatedAt: tab.updatedAt || new Date(0).toISOString()
+                        });
+                    });
 
                     mergedCol.tabs = mergedTabs;
                     mergedCollections.push(mergedCol);
@@ -1681,8 +1768,22 @@ class MipaTabManager {
                 }
             });
 
-            // Add remaining local collections (not in gist)
-            existingCollectionsMap.forEach(col => mergedCollections.push(col));
+            // Add remaining local collections (not in gist), ensuring they have timestamps and fixed property order
+            existingCollectionsMap.forEach(col => {
+                mergedCollections.push({
+                    id: col.id,
+                    name: col.name || col.title,
+                    color: col.color,
+                    updatedAt: col.updatedAt || new Date(0).toISOString(),
+                    tabs: col.tabs.map(tab => ({
+                        id: tab.id,
+                        title: tab.title,
+                        url: tab.url,
+                        description: tab.description,
+                        updatedAt: tab.updatedAt || new Date(0).toISOString()
+                    }))
+                });
+            });
 
             // Update collections with merged data
             this.collections = mergedCollections;
@@ -1727,7 +1828,22 @@ class MipaTabManager {
 
             const gist = await response.json();
             const fileContent = gist.files['mipa-data.json'].content;
-            const collections = JSON.parse(fileContent);
+            let collections = JSON.parse(fileContent);
+
+            // Ensure fixed property order for all collections and tabs
+            collections = collections.map(collection => ({
+                id: collection.id,
+                name: collection.name || collection.title,
+                color: collection.color || 'white',
+                updatedAt: collection.updatedAt || new Date(0).toISOString(),
+                tabs: (collection.tabs || []).map(tab => ({
+                    id: tab.id,
+                    title: tab.title,
+                    url: tab.url,
+                    description: tab.description,
+                    updatedAt: tab.updatedAt || new Date(0).toISOString()
+                }))
+            }));
 
             this.collections = collections;
             await this.saveCollections();

@@ -188,33 +188,28 @@ class MipaPopup {
                         this.isAddingTab = false;
                         return;
                     }
-                    const tabData = {
-                        id: `tab-${Date.now()}`,
-                        title: currentTab.title || 'Untitled',
-                        url: currentTab.url || '',
-                        description: currentTab.title || ''
-                    };
+                    const now = new Date().toISOString();
+                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '', description: currentTab.title || '', updatedAt: now };
                     this.collections[collectionIndex].tabs.push(tabData);
                     this.filterCollections();
                     await this.renderCollections();
                     this.showMessage('Tab saved successfully!');
-                    chrome.storage.local.set({ collections: this.collections }).catch(err => {
-                        console.error('Error saving to storage:', err);
-                    });
+                    // Ensure fixed field order before saving
+                    const collectionsToSave = this.collections.map(collection => ({
+                        id: collection.id, name: collection.name || collection.title, color: collection.color, updatedAt: collection.updatedAt || now,
+                        tabs: collection.tabs.map(tab => ({ id: tab.id, title: tab.title, url: tab.url, description: tab.description, updatedAt: tab.updatedAt || now }))
+                    }));
+                    chrome.storage.local.set({ collections: collectionsToSave }).catch(err => console.error('Error saving to storage:', err));
                     chrome.storage.local.get(['githubToken', 'gistId']).then(result => {
                         if (result.githubToken && result.gistId) {
                             try {
-                                const collectionsData = JSON.stringify(this.collections, null, 2);
-                                this.updateGist(result.gistId, result.githubToken, collectionsData).catch(syncError => {
-                                    console.error('Error syncing to Gist:', syncError);
-                                });
+                                const collectionsData = JSON.stringify(collectionsToSave, null, 2);
+                                this.updateGist(result.gistId, result.githubToken, collectionsData).catch(syncError => console.error('Error syncing to Gist:', syncError));
                             } catch (syncError) {
                                 console.error('Error preparing Gist sync:', syncError);
                             }
                         }
-                    }).catch(getErr => {
-                        console.error('Error getting Gist credentials:', getErr);
-                    });
+                    }).catch(getErr => console.error('Error getting Gist credentials:', getErr));
                     this.saveSession(collectionId);
                 }
             }
