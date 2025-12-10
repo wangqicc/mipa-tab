@@ -168,6 +168,27 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal for Delete Confirmation -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content gist-modal-content">
+            <div class="modal-header">
+                <h2 id="delete-modal-title">Delete Collection</h2>
+                <span class="close delete-modal-close">&times;</span>
+            </div>
+            <div id="delete-confirm-body" class="gist-modal-body">
+                <div class="logout-warning">
+                    <i class="fa-solid fa-exclamation-circle"></i>
+                    <p>Are you sure you want to delete this collection?</p>
+                    <p class="warning-text">This action cannot be undone.</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="delete-cancel-btn" class="btn-cancel">Cancel</button>
+                    <button type="button" id="delete-confirm-btn" class="btn-delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Backgroud Image -->
     <img id="bg-image" src="img/mipa.jpg">
     <script src="js/lib/sortable.min.js"></script>

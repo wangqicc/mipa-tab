@@ -11,6 +11,8 @@ class MipaTabManager {
         this.rendering = false;
         // Saving flag to prevent circular updates
         this.isSaving = false;
+        // Current collection ID to delete (used by modal)
+        this.currentDeletingCollectionId = null;
         // Initialize the app
         this.init();
     }
@@ -33,8 +35,9 @@ class MipaTabManager {
 
         // Bind event listeners
         this.bindEventListeners();
-        // Initialize edit tab modal
+        // Initialize modals
         this.initEditTabModal();
+        this.initDeleteModal();
 
         // Add storage change listener for real-time sync
         chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -812,17 +815,45 @@ class MipaTabManager {
             }
         }
     }
-    // Delete a collection
+    // Initialize delete modal
+    initDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        const closeBtn = document.querySelector('.delete-modal-close');
+        const cancelBtn = document.getElementById('delete-cancel-btn');
+        const confirmBtn = document.getElementById('delete-confirm-btn');
+        // Close modal when clicking close button
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        // Cancel button handler
+        cancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        // Confirm delete button handler
+        confirmBtn.addEventListener('click', () => {
+            if (this.currentDeletingCollectionId) {
+                // Perform actual delete operation
+                this.collections = this.collections.filter(col => col.id !== this.currentDeletingCollectionId);
+                this.renderCollections();
+                this.saveCollections();
+                // Reset current deleting collection ID
+                this.currentDeletingCollectionId = null;
+                // Close modal
+                modal.style.display = 'none';
+            }
+        });
+    }
+    // Show delete confirmation modal
     deleteCollection(collectionId) {
-        if (confirm('Are you sure you want to delete this collection?')) {
-            this.collections = this.collections.filter(col => col.id !== collectionId);
-            // Update other collections' updatedAt since structure changed
-            this.collections.forEach(collection => {
-                collection.updatedAt = new Date().toISOString();
-            });
-            this.renderCollections();
-            this.saveCollections();
-        }
+        this.currentDeletingCollectionId = collectionId;
+        const modal = document.getElementById('delete-modal');
+        modal.style.display = 'block';
     }
 
     // Change collection color
