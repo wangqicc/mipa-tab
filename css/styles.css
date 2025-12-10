@@ -414,7 +414,7 @@ body {
 .color-option.color-white {
     background-color: white;
     /* Always maintain a visible border */
-    border-color: #e0e0e0 !important;
+    border-color: #e0e0e0;
 }
 
 .color-gray {
@@ -1453,6 +1453,7 @@ body {
     display: flex;
     gap: 8px;
     align-items: center;
+    position: relative;
 }
 
 .color-option {
@@ -1460,9 +1461,12 @@ body {
     height: 20px;
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid transparent;
+    border: 2px solid #e0e0e0;
     transition: all 0.2s ease;
     position: relative;
+    display: inline-block;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .color-option:hover {
@@ -1472,7 +1476,6 @@ body {
 
 .color-option.white {
     background-color: #ffffff;
-    border-color: #e0e0e0;
 }
 
 .color-option.gray {
@@ -1508,10 +1511,10 @@ body {
     position: absolute;
     opacity: 0;
     cursor: pointer;
-    width: 20px;
-    height: 20px;
+    width: 0;
+    height: 0;
     margin: 0;
-    z-index: 1;
+    z-index: -1;
 }
 
 /* Show border for selected color */
