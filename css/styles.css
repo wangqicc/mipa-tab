@@ -21,43 +21,7 @@ body {
     margin: 0;
     padding: 0;
 }
-/* Quick Actions */
-.quick-actions {
-    display: flex;
-    gap: 20px;
-    padding: 15px 20px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
-}
-.quick-action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 100px;
-}
-.quick-action-btn:hover {
-    background-color: #f0f2f5;
-    border-color: #0071e3;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.2);
-}
-.quick-action-icon {
-    font-size: 24px;
-    margin-bottom: 5px;
-    color: #0071e3;
-}
-.quick-action-text {
-    font-size: 12px;
-    font-weight: 500;
-    color: #333333;
-}
+
 /* Header Styles */
 .mipa-header {
     display: flex;
@@ -109,15 +73,6 @@ body {
     flex: 1;
     margin-right: 10px;
 }
-.header-left {
-    display: none;
-}
-.header-center {
-    display: none;
-}
-.header-right {
-    display: none;
-}
 .action-btn {
     background: none;
     border: none;
@@ -135,11 +90,6 @@ body {
 .action-btn:hover {
     background-color: #f5f5f5;
     color: #333333;
-}
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
 }
 /* Button Styles */
 .btn-primary {
@@ -195,9 +145,6 @@ body {
     box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
 }
 /* Search Area */
-.search-area {
-    display: none;
-}
 .search-container {
     display: flex;
     align-items: center;
@@ -284,53 +231,6 @@ body {
     position: relative;
 }
 
-/* Collection Color Styles */
-.collection-color-gray,
-.collection-item.collection-color-gray {
-    background-color: rgba(142, 142, 147, 0.1);
-    border-color: rgba(142, 142, 147, 0.3);
-}
-
-.collection-color-red,
-.collection-item.collection-color-red {
-    background-color: rgba(255, 59, 48, 0.1);
-    border-color: rgba(255, 59, 48, 0.3);
-}
-
-.collection-color-orange,
-.collection-item.collection-color-orange {
-    background-color: rgba(255, 149, 0, 0.1);
-    border-color: rgba(255, 149, 0, 0.3);
-}
-
-.collection-color-yellow,
-.collection-item.collection-color-yellow {
-    background-color: rgba(255, 204, 0, 0.1);
-    border-color: rgba(255, 204, 0, 0.3);
-}
-
-.collection-color-green,
-.collection-item.collection-color-green {
-    background-color: rgba(52, 199, 89, 0.1);
-    border-color: rgba(52, 199, 89, 0.3);
-}
-
-.collection-color-blue,
-.collection-item.collection-color-blue {
-    background-color: rgba(0, 122, 255, 0.1);
-    border-color: rgba(0, 122, 255, 0.3);
-}
-
-.collection-color-purple,
-.collection-item.collection-color-purple {
-    background-color: rgba(175, 82, 222, 0.1);
-    border-color: rgba(175, 82, 222, 0.3);
-}
-
-.collection-item.collection-color-white {
-    background-color: rgba(255, 255, 255, 0.8);
-    border-color: rgba(200, 200, 200, 0.3);
-}
 
 /* Popup-specific collection item styles */
 .collection-item {
@@ -410,6 +310,54 @@ body {
 /* Color dot hover effect */
 .color-picker-container:hover .btn-color-picker {
     transform: scale(1.1);
+}
+
+/* Collection Color Styles */
+.collection-color-gray,
+.collection-item.collection-color-gray {
+    background-color: rgba(142, 142, 147, 0.1);
+    border-color: rgba(142, 142, 147, 0.3);
+}
+
+.collection-color-red,
+.collection-item.collection-color-red {
+    background-color: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.3);
+}
+
+.collection-color-orange,
+.collection-item.collection-color-orange {
+    background-color: rgba(255, 149, 0, 0.1);
+    border-color: rgba(255, 149, 0, 0.3);
+}
+
+.collection-color-yellow,
+.collection-item.collection-color-yellow {
+    background-color: rgba(255, 204, 0, 0.1);
+    border-color: rgba(255, 204, 0, 0.3);
+}
+
+.collection-color-green,
+.collection-item.collection-color-green {
+    background-color: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.3);
+}
+
+.collection-color-blue,
+.collection-item.collection-color-blue {
+    background-color: rgba(0, 122, 255, 0.1);
+    border-color: rgba(0, 122, 255, 0.3);
+}
+
+.collection-color-purple,
+.collection-item.collection-color-purple {
+    background-color: rgba(175, 82, 222, 0.1);
+    border-color: rgba(175, 82, 222, 0.3);
+}
+
+.collection-item.collection-color-white {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(200, 200, 200, 0.3);
 }
 
 /* Color picker dropdown */
@@ -557,20 +505,6 @@ body {
     align-items: center;
     gap: 12px;
 }
-.collection-action-btn {
-    background: none;
-    border: none;
-    color: #666666;
-    cursor: pointer;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-.collection-action-btn:hover {
-    background-color: #e0e0e0;
-    color: #333333;
-}
 .add-tab-btn {
     padding: 6px 12px;
     font-size: 12px;
@@ -694,11 +628,6 @@ body {
     display: flex;
     gap: 8px;
     align-items: flex-end;
-}
-/* Button container for positioning */
-.btn-container {
-    position: relative;
-    display: inline-block;
 }
 /* Copy button - circular */
 .btn-copy-tab {
@@ -859,14 +788,6 @@ body {
     background-color: rgba(211, 47, 47, 0.2);
 }
 /* Bottom right action buttons */
-.tab-bottom-actions {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
 /* Show all buttons on tab hover */
 .tab-card:hover .tab-hover-btn {
     opacity: 1;
@@ -909,9 +830,6 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0;
-}
-.close-sidebar {
-    display: none;
 }
 .window-tabs {
     flex: 1;
@@ -1378,28 +1296,6 @@ body {
 }
 
 /* Gist Button Styles */
-.gist-btn-container {
-    position: relative;
-}
-
-.gist-btn-loading {
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-.gist-btn-loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s linear infinite;
-}
 
 @keyframes spin {
     to { transform: translateY(-50%) rotate(360deg); }
