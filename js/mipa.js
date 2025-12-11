@@ -1410,11 +1410,11 @@ class MipaTabManager {
             });
         }
 
-        // Refresh open tabs periodically
+        // Refresh open tabs periodically (reduced frequency to every 30 seconds)
         setInterval(() => {
             this.loadOpenTabs();
             this.renderOpenTabs();
-        }, 5000);
+        }, 30000);
         // Setup drag and drop functionality
     }
 
