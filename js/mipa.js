@@ -13,6 +13,8 @@ class MipaTabManager {
         this.isSaving = false;
         // Current collection ID to delete (used by modal)
         this.currentDeletingCollectionId = null;
+        // Window expansion states
+        this.windowExpansionStates = {};
         // Initialize the app
         this.init();
     }
@@ -26,19 +28,19 @@ class MipaTabManager {
         await this.loadOpenTabs();
         // Load expansion states
         this.expansionStates = await this.loadExpansionStates();
+        // Load window expansion states
+        this.windowExpansionStates = await this.loadWindowExpansionStates();
         // Update collection count
         this.updateCollectionCount();
-        // Render collections and open tabs first
+        // Render collections first
         this.renderCollections();
-        this.renderOpenTabs();
-        // Set up drag and drop functionality after collections are rendered
-
-        // Bind event listeners
+        // Bind event listeners first
         this.bindEventListeners();
         // Initialize modals
         this.initEditTabModal();
         this.initDeleteModal();
-
+        // Render open tabs after event listeners are bound
+        this.renderOpenTabs();
         // Add storage change listener for real-time sync
         chrome.storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local' && changes.collections && !this.isSaving) {
@@ -133,6 +135,24 @@ class MipaTabManager {
             return result.collectionExpansionStates || {};
         } catch (error) {
             console.error('Error loading expansion states:', error);
+            return {};
+        }
+    }
+    // Save window expansion states to storage
+    async saveWindowExpansionStates() {
+        try {
+            await chrome.storage.local.set({ windowExpansionStates: this.windowExpansionStates });
+        } catch (error) {
+            console.error('Error saving window expansion states:', error);
+        }
+    }
+    // Load window expansion states from storage
+    async loadWindowExpansionStates() {
+        try {
+            const result = await chrome.storage.local.get('windowExpansionStates');
+            return result.windowExpansionStates || {};
+        } catch (error) {
+            console.error('Error loading window expansion states:', error);
             return {};
         }
     }
@@ -592,6 +612,13 @@ class MipaTabManager {
     renderOpenTabs() {
         const container = document.getElementById('windows-container');
         if (!container) return;
+        // Save current expansion states before re-rendering
+        const existingWindows = document.querySelectorAll('.window-tabs');
+        existingWindows.forEach(windowTabs => {
+            const windowId = windowTabs.dataset.windowId;
+            const isExpanded = !windowTabs.classList.contains('collapsed');
+            this.windowExpansionStates[windowId] = isExpanded;
+        });
         container.innerHTML = '';
         // Group tabs by windowId
         const tabsByWindow = {};
@@ -607,13 +634,17 @@ class MipaTabManager {
             const windowElement = this.createWindowElement(windowId, index + 1, windowTabs);
             container.appendChild(windowElement);
         });
-        // Re-setup window header click functionality
+        // Setup window header click functionality for the newly created elements
         this.setupWindowHeaderClick();
+        // Save expansion states after rendering
+        this.saveWindowExpansionStates();
     }
     // Create a window element with tabs
     createWindowElement(windowId, windowNumber, tabs) {
+        // Get saved expansion state, explicitly default to expanded if not set
+        const isExpanded = this.windowExpansionStates[windowId] === undefined ? true : this.windowExpansionStates[windowId];
         const windowContainer = document.createElement('div');
-        windowContainer.className = 'window-tabs';
+        windowContainer.className = `window-tabs ${isExpanded ? '' : 'collapsed'}`;
         windowContainer.dataset.windowId = windowId;
         // Window header
         const windowHeader = document.createElement('div');
@@ -621,7 +652,7 @@ class MipaTabManager {
         const headerContent = document.createElement('div');
         headerContent.className = 'window-header-content';
         const expander = document.createElement('span');
-        expander.className = 'window-expander';
+        expander.className = `window-expander ${isExpanded ? '' : 'collapsed'}`;
         expander.textContent = '▼';
         const title = document.createElement('h4');
         title.textContent = `Window ${windowNumber}`;
@@ -1385,9 +1416,6 @@ class MipaTabManager {
             this.renderOpenTabs();
         }, 5000);
         // Setup drag and drop functionality
-
-        // Setup window header click functionality for expand/collapse
-        this.setupWindowHeaderClick();
     }
 
     // Gist Sync Methods
@@ -2023,22 +2051,35 @@ class MipaTabManager {
     }
     // Setup window header click functionality for expand/collapse
     setupWindowHeaderClick() {
-        // Wait for DOM to be fully loaded before adding event listeners
-        setTimeout(() => {
-            // Add click event to window headers
-            const windowHeaders = document.querySelectorAll('.window-header');
-            windowHeaders.forEach(header => {
-                header.addEventListener('click', () => {
-                    // Toggle collapsed class on parent window-tabs element
-                    const windowTabs = header.closest('.window-tabs');
-                    const expander = header.querySelector('.window-expander');
-                    if (windowTabs && expander) {
-                        windowTabs.classList.toggle('collapsed');
-                        expander.classList.toggle('collapsed');
-                    }
-                });
+        // Get all window headers
+        const windowHeaders = document.querySelectorAll('.window-header');
+        // Add click event listener to each header
+        windowHeaders.forEach(header => {
+            // Remove any existing click event listeners by cloning the element
+            const newHeader = header.cloneNode(true);
+            header.parentNode.replaceChild(newHeader, header);
+        });
+        // Re-select the headers after cloning
+        const freshHeaders = document.querySelectorAll('.window-header');
+        // Add fresh event listeners
+        freshHeaders.forEach(header => {
+            // Add event listener for window header click
+            header.addEventListener('click', () => {
+                // Toggle collapsed class on parent window-tabs element
+                const windowTabs = header.closest('.window-tabs');
+                const expander = header.querySelector('.window-expander');
+                if (windowTabs && expander) {
+                    const windowId = windowTabs.dataset.windowId;
+                    const wasCollapsed = windowTabs.classList.contains('collapsed');
+                    // Toggle the classes to change visual state
+                    windowTabs.classList.toggle('collapsed');
+                    expander.classList.toggle('collapsed');
+                    // Save the new expansion state
+                    this.windowExpansionStates[windowId] = !wasCollapsed;
+                    this.saveWindowExpansionStates();
+                }
             });
-        }, 100);
+        });
     }
     // Open Mipa in a new tab
     async openMipaInNewTab() {
