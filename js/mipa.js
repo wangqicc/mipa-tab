@@ -884,7 +884,7 @@ class MipaTabManager {
     deleteCollection(collectionId) {
         this.currentDeletingCollectionId = collectionId;
         const modal = document.getElementById('delete-modal');
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
     }
 
     // Change collection color
@@ -1058,7 +1058,7 @@ class MipaTabManager {
         }
         // Open the modal
         const modal = document.getElementById('edit-tab-modal');
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         // Focus title input
         document.getElementById('edit-title').focus();
         document.getElementById('edit-title').select();
@@ -1503,7 +1503,7 @@ class MipaTabManager {
             this.errorMessageText.textContent = errorMessage;
         }
         // Show modal
-        this.gistModal.style.display = 'block';
+        this.gistModal.style.display = 'flex';
         // Focus token input if in login mode
         if (mode === 'login') {
             this.githubTokenInput.focus();

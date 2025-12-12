@@ -935,10 +935,11 @@ body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
 }
 .modal-content {
     background-color: rgba(255, 255, 255, 0.5);
-    margin: 15% auto;
     padding: 24px;
     border-radius: 8px;
     width: 90%;
