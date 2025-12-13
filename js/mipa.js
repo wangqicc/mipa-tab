@@ -1,19 +1,65 @@
 // Main script for Mipa-like Tab Manager
+/**
+ * Mipa Tab Manager class for managing browser tabs and collections
+ *
+ * @class MipaTabManager
+ */
 class MipaTabManager {
+    /**
+     * Creates an instance of MipaTabManager
+     *
+     * @constructor
+     */
     constructor() {
+        /**
+         * Array of tab collections
+         * @type {Array<Collection>}
+         */
         this.collections = [];
+        /**
+         * Array of currently open tabs
+         * @type {Array<Tab>}
+         */
         this.openTabs = [];
+        /**
+         * Flag to indicate if the app is initialized
+         * @type {boolean}
+         */
         this.isInitialized = false;
+        /**
+         * Current search query for filtering collections
+         * @type {string}
+         */
         this.searchQuery = '';
-        // Debounce timer for saving collections
+        /**
+         * Debounce timer for saving collections
+         * @type {number|null}
+         */
         this.saveTimer = null;
-        // Rendering throttle flag
+        /**
+         * Flag to throttle rendering
+         * @type {boolean}
+         */
         this.rendering = false;
-        // Saving flag to prevent circular updates
+        /**
+         * Flag to prevent circular updates during saving
+         * @type {boolean}
+         */
         this.isSaving = false;
-        // Current collection ID to delete (used by modal)
+        /**
+         * Flag to prevent circular updates during syncing
+         * @type {boolean}
+         */
+        this.isSyncing = false;
+        /**
+         * Current collection ID to delete (used by modal)
+         * @type {string|null}
+         */
         this.currentDeletingCollectionId = null;
-        // Window expansion states
+        /**
+         * Window expansion states for open tabs sidebar
+         * @type {Object<string, boolean>}
+         */
         this.windowExpansionStates = {};
         // Initialize the app
         this.init();
@@ -22,6 +68,22 @@ class MipaTabManager {
     async init() {
         if (this.isInitialized) return;
         this.isInitialized = true;
+        // Load all necessary data from storage
+        await this.loadAllData();
+        // Initialize UI components
+        this.updateCollectionCount();
+        this.renderCollections();
+        // Set up event listeners
+        this.bindEventListeners();
+        this.initModals();
+        // Render open tabs after event listeners are bound
+        this.renderOpenTabs();
+        // Set up additional listeners and sync
+        this.setupStorageListener();
+        await this.setupAutoSync();
+    }
+    // Load all necessary data from storage
+    async loadAllData() {
         // Load collections from storage
         await this.loadCollections();
         // Load open tabs
@@ -30,26 +92,39 @@ class MipaTabManager {
         this.expansionStates = await this.loadExpansionStates();
         // Load window expansion states
         this.windowExpansionStates = await this.loadWindowExpansionStates();
-        // Update collection count
-        this.updateCollectionCount();
-        // Render collections first
-        this.renderCollections();
-        // Bind event listeners first
-        this.bindEventListeners();
-        // Initialize modals
-        this.initEditTabModal();
-        this.initDeleteModal();
-        // Render open tabs after event listeners are bound
-        this.renderOpenTabs();
-        // Add storage change listener for real-time sync
+    }
+    // Setup storage change listener for real-time sync
+    setupStorageListener() {
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes.collections && !this.isSaving) {
-                this.loadCollections().then(() => { this.updateCollectionCount(); this.renderCollections(); });
+            // Skip if we're currently saving or syncing to prevent circular updates
+            if (areaName === 'local' && changes.collections && !this.isSaving && !this.isSyncing) {
+                // Load the updated collections from storage
+                this.loadCollections().then(() => {
+                    // Update the UI with the new data
+                    this.renderCollections();
+                });
             }
         });
-        // Auto-sync with Gist on initialization if logged in
+    }
+    // Initialize all modals
+    initModals() {
+        try {
+            this.initEditTabModal();
+        } catch (error) {
+            console.warn('Edit tab modal not found, skipping initialization');
+        }
+        try {
+            this.initDeleteModal();
+        } catch (error) {
+            console.warn('Delete modal not found, skipping initialization');
+        }
+    }
+    // Setup auto-sync with Gist on initialization if logged in
+    async setupAutoSync() {
         const gistResult = await chrome.storage.local.get(['githubToken', 'gistId']);
-        if (gistResult.githubToken && gistResult.gistId) { await this.syncWithGist(gistResult.githubToken, false); }
+        if (gistResult.githubToken && gistResult.gistId) {
+            await this.syncWithGist(gistResult.githubToken, false);
+        }
     }
     // Load collections from storage
     async loadCollections() {
@@ -70,48 +145,98 @@ class MipaTabManager {
     getDefaultCollections() {
         return [];
     }
-    // Save collections to storage
+    // Save collections to storage with debounce
     async saveCollections() {
         clearTimeout(this.saveTimer);
         this.saveTimer = setTimeout(async () => {
-            try {
-                this.isSaving = true;
-                const now = new Date().toISOString();
-                const collectionsToSave = this.collections.map(collection => ({id: collection.id, name: collection.name || collection.title, color: collection.color, updatedAt: collection.updatedAt || now, tabs: collection.tabs.map(tab => ({id: tab.id, title: tab.title, url: tab.url, description: tab.description, updatedAt: tab.updatedAt || now}))}));
-                const currentResult = await chrome.storage.local.get('collections');
-                const currentCollections = currentResult.collections || [];
-                const collectionsToSaveStr = JSON.stringify(collectionsToSave);
-                const currentCollectionsStr = JSON.stringify(currentCollections);
-                if (collectionsToSaveStr !== currentCollectionsStr) {
-                    await chrome.storage.local.set({collections: collectionsToSave});
-                    await this.saveExpansionStates();
-                    const result = await chrome.storage.local.get(['githubToken', 'gistId']);
-                    if (result.githubToken && result.gistId) {
-                        try {
-                            const collectionsData = JSON.stringify(collectionsToSave, null, 2);
-                            const existingGist = await fetch(`https://api.github.com/gists/${result.gistId}`, {headers: {'Authorization': `token ${result.githubToken}`}});
-                            if (existingGist.ok) {
-                                const gistData = await existingGist.json();
-                                const existingContent = gistData.files['mipa-data.json'].content;
-                                if (collectionsData !== existingContent) {
-                                    await this.updateGist(result.gistId, result.githubToken, collectionsData);
-                                    this.checkGistLoginStatus();
-                                }
-                            } else {
-                                await this.updateGist(result.gistId, result.githubToken, collectionsData);
-                                this.checkGistLoginStatus();
-                            }
-                        } catch (syncError) {
-                            console.error('Error syncing to Gist:', syncError);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error in saveCollections:', error);
-            } finally {
-                this.isSaving = false;
-            }
+            await this.performSaveCollections();
         }, 300);
+    }
+    // Perform the actual save operation for collections
+    async performSaveCollections() {
+        // Skip saving if currently syncing to prevent circular updates
+        if (this.isSyncing) {
+            return;
+        }
+        try {
+            this.isSaving = true;
+            // Prepare collections for saving
+            const collectionsToSave = this.prepareCollectionsForSaving();
+            // Check if collections have changed
+            const collectionsChanged = await this.checkIfCollectionsChanged(collectionsToSave);
+            if (collectionsChanged) {
+                // Save to local storage
+                await this.saveCollectionsToLocalStorage(collectionsToSave);
+                // Save expansion states
+                await this.saveExpansionStates();
+                // Sync with Gist if authenticated
+                await this.syncCollectionsWithGist(collectionsToSave);
+            }
+        } catch (error) {
+            console.error('Error saving collections:', error);
+        } finally {
+            this.isSaving = false;
+        }
+    }
+    // Prepare collections for saving with proper formatting
+    prepareCollectionsForSaving() {
+        const now = new Date().toISOString();
+        return this.collections.map(collection => ({
+            id: collection.id,
+            name: collection.name || collection.title,
+            color: collection.color,
+            updatedAt: collection.updatedAt || now,
+            tabs: collection.tabs.map(tab => ({
+                id: tab.id,
+                title: tab.title,
+                url: tab.url,
+                description: tab.description,
+                updatedAt: tab.updatedAt || now
+            }))
+        }));
+    }
+    // Check if collections have changed since last save
+    async checkIfCollectionsChanged(collectionsToSave) {
+        const currentResult = await chrome.storage.local.get('collections');
+        const currentCollections = currentResult.collections || [];
+        const collectionsToSaveStr = JSON.stringify(collectionsToSave);
+        const currentCollectionsStr = JSON.stringify(currentCollections);
+        return collectionsToSaveStr !== currentCollectionsStr;
+    }
+    // Save collections to local storage
+    async saveCollectionsToLocalStorage(collectionsToSave) {
+        await chrome.storage.local.set({ collections: collectionsToSave });
+    }
+    // Sync collections with Gist if authenticated
+    async syncCollectionsWithGist(collectionsToSave) {
+        const result = await chrome.storage.local.get(['githubToken', 'gistId']);
+        if (result.githubToken && result.gistId) {
+            try {
+                const collectionsData = JSON.stringify(collectionsToSave, null, 2);
+                await this.syncWithGistIfNeeded(result.gistId, result.githubToken, collectionsData);
+                this.checkGistLoginStatus();
+            } catch (syncError) {
+                console.error('Error syncing to Gist:', syncError);
+            }
+        }
+    }
+    // Sync with Gist only if data has changed
+    async syncWithGistIfNeeded(gistId, token, collectionsData) {
+        const existingGist = await fetch(`https://api.github.com/gists/${gistId}`, {
+            headers: {
+                'Authorization': `token ${token}`
+            }
+        });
+        if (existingGist.ok) {
+            const gistData = await existingGist.json();
+            const existingContent = gistData.files['mipa-data.json'].content;
+            if (collectionsData !== existingContent) {
+                await this.updateGist(gistId, token, collectionsData);
+            }
+        } else {
+            // If gist not found or error, update it anyway
+            await this.updateGist(gistId, token, collectionsData);
+        }
     }
     // Save expansion states of all collections to storage
     async saveExpansionStates() {
@@ -232,76 +357,6 @@ class MipaTabManager {
             this.rendering = false;
         });
     }
-    // Handle drag over event for collections
-    handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        // Get the collection element or tabs grid
-        const target = e.target.closest('.collection') || e.target.closest('.tabs-grid');
-        if (target) {
-            target.classList.add('drag-over');
-        }
-    }
-
-    // Handle drag leave event for collections
-    handleDragLeave(e) {
-        const target = e.target.closest('.collection') || e.target.closest('.tabs-grid');
-        if (target) {
-            target.classList.remove('drag-over');
-        }
-    }
-
-    // Handle drop event for collections
-    handleDrop(e) {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent event bubbling to avoid duplicate calls
-
-        // Remove drag-over class from all elements
-        document.querySelectorAll('.collection, .tabs-grid').forEach(el => {
-            el.classList.remove('drag-over');
-        });
-
-        // Get the collection element
-        const collectionEl = e.target.closest('.collection');
-        if (!collectionEl) return;
-
-        // Get collection ID
-        const collectionId = collectionEl.dataset.collectionId;
-        if (!collectionId) return;
-
-        // Parse drag data
-        try {
-            const dragDataJSON = e.dataTransfer.getData('application/json');
-            const dragData = JSON.parse(dragDataJSON);
-
-            // Check if it's an open tab
-            if (dragData.isOpenTab) {
-                // Check if tab with same URL already exists in the collection
-                if (this.isTabUrlExists(collectionId, dragData.url)) {
-                    console.log('Tab with the same URL already exists in the collection');
-                    return;
-                }
-                // Create tab data from open tab
-                const tabData = {
-                    id: `tab-${Date.now()}`,
-                    title: dragData.title,
-                    description: dragData.title, // Use title as default description
-                    url: dragData.url
-                };
-
-                // Add tab to collection
-                const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
-                if (collectionIndex !== -1) {
-                    this.collections[collectionIndex].tabs.push(tabData);
-                    this.updateCollectionTabs(collectionId);
-                    this.saveCollections();
-                }
-            }
-        } catch (error) {
-            console.error('Error handling drop:', error);
-        }
-    }
 
     // Create a collection element
     createCollectionElement(collection, isExpanded) {
@@ -309,18 +364,51 @@ class MipaTabManager {
         collectionDiv.className = `collection collection-color-${collection.color} ${isExpanded ? 'expanded' : 'collapsed'}`;
         collectionDiv.dataset.collectionId = collection.id;
         collectionDiv.dataset.color = collection.color;
-        // Collection header
+        // Create and append header
+        const header = this.createCollectionHeader(collection, isExpanded);
+        collectionDiv.appendChild(header);
+        // Create and append tabs grid
+        const tabsGrid = this.createTabsGrid(collection, isExpanded);
+        collectionDiv.appendChild(tabsGrid);
+        return collectionDiv;
+    }
+    // Create collection header
+    createCollectionHeader(collection, isExpanded) {
         const header = document.createElement('div');
         header.className = 'collection-header';
-        // Collection title with lock icon
+        // Create title container
+        const titleContainer = this.createCollectionTitleContainer(collection, isExpanded);
+        // Create collection actions
+        const actions = this.createCollectionActions(collection);
+        // Add header click event (toggle expansion)
+        header.addEventListener('click', () => {
+            this.toggleCollection(collection.id);
+        });
+        header.appendChild(titleContainer);
+        header.appendChild(actions);
+        return header;
+    }
+    // Create collection title container
+    createCollectionTitleContainer(collection, isExpanded) {
         const titleContainer = document.createElement('div');
         titleContainer.className = 'collection-title-container';
-        // Expander icon with state
+        // Create expander icon
         const expander = document.createElement('span');
         expander.className = 'collection-expander';
-        // Set icon based on expansion state
         expander.textContent = isExpanded ? '▼' : '▶';
-        // Collection name - create editable container
+        // Create name container
+        const nameContainer = this.createCollectionNameContainer(collection);
+        // Create tab count
+        const tabCount = document.createElement('span');
+        tabCount.className = 'collection-tab-count';
+        tabCount.textContent = ` | ${collection.tabs.length} tabs`;
+        titleContainer.appendChild(expander);
+        titleContainer.appendChild(nameContainer);
+        titleContainer.appendChild(tabCount);
+        return titleContainer;
+    }
+    // Create collection name container
+    createCollectionNameContainer(collection) {
         const nameContainer = document.createElement('div');
         nameContainer.className = 'collection-name-container';
         // Normal view - display mode
@@ -332,6 +420,13 @@ class MipaTabManager {
             this.startEditCollectionName(collection.id, nameContainer);
         });
         // Edit view - input mode
+        const editName = this.createCollectionEditName(collection, nameContainer);
+        nameContainer.appendChild(displayName);
+        nameContainer.appendChild(editName);
+        return nameContainer;
+    }
+    // Create collection edit name container
+    createCollectionEditName(collection, nameContainer) {
         const editName = document.createElement('div');
         editName.className = 'collection-edit-name';
         editName.style.display = 'none';
@@ -356,20 +451,23 @@ class MipaTabManager {
         editName.appendChild(input);
         editName.appendChild(cancelBtn);
         editName.appendChild(saveBtn);
-        nameContainer.appendChild(displayName);
-        nameContainer.appendChild(editName);
-        // Tab count
-        const tabCount = document.createElement('span');
-        tabCount.className = 'collection-tab-count';
-        tabCount.textContent = ` | ${collection.tabs.length} tabs`;
-        titleContainer.appendChild(expander);
-        titleContainer.appendChild(nameContainer);
-        titleContainer.appendChild(tabCount);
-        // Collection actions
+        return editName;
+    }
+    // Create collection actions
+    createCollectionActions(collection) {
         const actions = document.createElement('div');
         actions.className = 'collection-actions';
 
-        // Color picker container
+        // Create color picker
+        const colorPicker = this.createColorPicker(collection);
+        // Create delete collection button
+        const deleteBtn = this.createDeleteCollectionBtn(collection.id);
+        actions.appendChild(colorPicker);
+        actions.appendChild(deleteBtn);
+        return actions;
+    }
+    // Create color picker
+    createColorPicker(collection) {
         const colorPickerContainer = document.createElement('div');
         colorPickerContainer.className = 'color-picker-container';
 
@@ -393,7 +491,7 @@ class MipaTabManager {
             colorOption.className = `color-option color-${color} ${collection.color === color ? 'selected' : ''}`;
             colorOption.dataset.color = color;
             colorOption.dataset.collectionId = collection.id;
-            colorOption.title = capitalizeFirstLetter(color);
+            colorOption.title = this.capitalizeFirstLetter(color);
 
             // Add click event listener
             colorOption.addEventListener('click', (e) => {
@@ -405,8 +503,6 @@ class MipaTabManager {
 
             colorPickerDropdown.appendChild(colorOption);
         });
-
-        // Dropdown now shown on hover, no click event needed
 
         // Add event listeners to prevent event bubbling when clicking on color picker
         colorPickerContainer.addEventListener('click', (e) => {
@@ -420,31 +516,22 @@ class MipaTabManager {
         colorPickerContainer.appendChild(colorPickerBtn);
         colorPickerContainer.appendChild(colorPickerDropdown);
 
-        // Add color picker container to actions
-        actions.appendChild(colorPickerContainer);
-
-        // Delete collection button - replace Add tab button
+        return colorPickerContainer;
+    }
+    // Create delete collection button
+    createDeleteCollectionBtn(collectionId) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-delete';
         deleteBtn.innerHTML = '&times; Delete';
         deleteBtn.title = 'Delete Collection';
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.deleteCollection(collection.id);
+            this.deleteCollection(collectionId);
         });
-        actions.appendChild(deleteBtn);
-
-        // Helper function to capitalize first letter
-        function capitalizeFirstLetter(string) {
-            return string.charAt(0).toUpperCase() + string.slice(1);
-        }
-        header.appendChild(titleContainer);
-        header.appendChild(actions);
-        // Toggle expand/collapse on header click (not when editing name)
-        header.addEventListener('click', () => {
-            this.toggleCollection(collection.id);
-        });
-        // Tabs grid
+        return deleteBtn;
+    }
+    // Create tabs grid
+    createTabsGrid(collection, isExpanded) {
         const tabsGrid = document.createElement('div');
         tabsGrid.className = 'tabs-grid';
         tabsGrid.style.display = isExpanded ? 'grid' : 'none';
@@ -469,19 +556,11 @@ class MipaTabManager {
             tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
         }
 
-        // Add drag and drop event listeners
-        collectionDiv.addEventListener('dragover', (e) => this.handleDragOver(e));
-        collectionDiv.addEventListener('dragleave', (e) => this.handleDragLeave(e));
-        collectionDiv.addEventListener('drop', (e) => this.handleDrop(e));
-
-        // Add event listeners to tabs grid as well for better drop targeting
-        tabsGrid.addEventListener('dragover', (e) => this.handleDragOver(e));
-        tabsGrid.addEventListener('dragleave', (e) => this.handleDragLeave(e));
-        tabsGrid.addEventListener('drop', (e) => this.handleDrop(e));
-
-        collectionDiv.appendChild(header);
-        collectionDiv.appendChild(tabsGrid);
-        return collectionDiv;
+        return tabsGrid;
+    }
+    // Helper method to capitalize first letter of a string
+    capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
     // Helper method to set up favicon with fallbacks
     setupFavicon(faviconElement, tab) {
@@ -498,29 +577,40 @@ class MipaTabManager {
     }
     // Create a tab element
     createTabElement(tab, collectionId) {
+        // Ensure tab has all required properties
+        const safeTab = {
+            id: tab.id || `tab-${Date.now()}`,
+            title: tab.title || 'Untitled',
+            url: tab.url || '',
+            description: tab.description || tab.title || 'Untitled',
+            updatedAt: tab.updatedAt || new Date().toISOString()
+        };
         const tabCard = document.createElement('div');
         tabCard.className = 'tab-card';
-        tabCard.dataset.tabId = tab.id;
+        tabCard.dataset.tabId = safeTab.id;
         tabCard.dataset.collectionId = collectionId;
+        tabCard.draggable = true;
         // Tab content container
         const tabContent = document.createElement('div');
         tabContent.className = 'tab-content';
         // Tab header with favicon and title
         const tabHeader = document.createElement('div');
         tabHeader.className = 'tab-card-header';
+        // Favicon
         const favicon = document.createElement('img');
         favicon.className = 'tab-favicon';
         // Set up favicon with fallbacks
-        this.setupFavicon(favicon, tab);
+        this.setupFavicon(favicon, safeTab);
+        // Title
         const title = document.createElement('h4');
         title.className = 'tab-title';
-        title.textContent = tab.title;
+        title.textContent = safeTab.title;
         tabHeader.appendChild(favicon);
         tabHeader.appendChild(title);
         // Tab URL
         const url = document.createElement('p');
         url.className = 'tab-url';
-        url.textContent = this.truncateUrl(tab.url);
+        url.textContent = this.truncateUrl(safeTab.url);
         // Horizontal line with updated margin
         const hr = document.createElement('hr');
         hr.className = 'tab-divider';
@@ -529,10 +619,10 @@ class MipaTabManager {
             border: none;
             border-top: 1px solid #e0e0e0;
         `;
-        // Tab description (use title if no description)
+        // Tab description
         const description = document.createElement('p');
         description.className = 'tab-description';
-        description.textContent = tab.description || tab.title;
+        description.textContent = safeTab.description;
         description.style.cssText = `
             font-size: 11px;
             color: #666666;
@@ -553,7 +643,7 @@ class MipaTabManager {
         deleteBtn.setAttribute('data-text', 'Delete');
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.deleteTab(tab.id, collectionId);
+            this.deleteTab(safeTab.id, collectionId);
         });
         // Copy button - circular icon button
         const copyBtn = document.createElement('button');
@@ -563,7 +653,7 @@ class MipaTabManager {
         copyBtn.setAttribute('data-text', 'Copy');
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.copyTabLink(tab.url);
+            this.copyTabLink(safeTab.url);
         });
         // Edit button - circular icon button
         const editBtn = document.createElement('button');
@@ -573,27 +663,30 @@ class MipaTabManager {
         editBtn.setAttribute('data-text', 'Edit');
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.editTab(tab.id, collectionId);
+            this.editTab(safeTab.id, collectionId);
         });
         // Add content to tab card
         tabContent.appendChild(tabHeader);
         tabContent.appendChild(url);
         tabContent.appendChild(hr);
         tabContent.appendChild(description);
+
         // Add all elements to tab card
         tabCard.appendChild(tabContent);
         tabCard.appendChild(deleteBtn);
+
         // Add bottom buttons to a container
         const actionButtonsContainer = document.createElement('div');
         actionButtonsContainer.className = 'action-buttons-container';
         actionButtonsContainer.appendChild(copyBtn);
         actionButtonsContainer.appendChild(editBtn);
         tabCard.appendChild(actionButtonsContainer);
+
         // Open tab on click - only if not clicking on action buttons
         tabCard.addEventListener('click', (e) => {
             // Check if click is on an action button or form element
             if (!e.target.closest('.tab-hover-btn') && !e.target.closest('.tab-edit-form')) {
-                this.openTab(tab.url);
+                this.openTab(safeTab.url);
             }
         });
         return tabCard;
@@ -638,6 +731,8 @@ class MipaTabManager {
         this.setupWindowHeaderClick();
         // Save expansion states after rendering
         this.saveWindowExpansionStates();
+        // This ensures that new open tabs can be dragged to collections
+        this.setupSortableJS();
     }
     // Create a window element with tabs
     createWindowElement(windowId, windowNumber, tabs) {
@@ -692,24 +787,6 @@ class MipaTabManager {
         tabItem.addEventListener('click', () => {
             this.focusTab(parseInt(tab.id));
         });
-        // Add dragstart event for open tab item
-        tabItem.addEventListener('dragstart', (e) => {
-            e.dataTransfer.effectAllowed = 'move';
-            // Create drag data for open tab
-            const dragData = {
-                openTabId: tab.id,
-                title: tab.title,
-                url: tab.url,
-                favIconUrl: tab.favIconUrl,
-                isOpenTab: true
-            };
-            e.dataTransfer.setData('application/json', JSON.stringify(dragData));
-            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-            tabItem.classList.add('dragging');
-        });
-        tabItem.addEventListener('dragend', (e) => {
-            tabItem.classList.remove('dragging');
-        });
         tabItem.appendChild(favicon);
         tabItem.appendChild(title);
         tabItem.appendChild(url);
@@ -762,41 +839,54 @@ class MipaTabManager {
     }
     // Update only the tabs in a specific collection (partial update for better performance)
     updateCollectionTabs(collectionId) {
-        const collection = this.collections.find(col => col.id === collectionId);
-        if (!collection) return;
-        // Find the tabs grid element for this collection
-        const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
-        if (!tabsGrid) return;
-        // Save current scroll position to restore later
-        const scrollTop = tabsGrid.scrollTop;
-        const scrollLeft = tabsGrid.scrollLeft;
-        // Clear the tabs grid and re-render only this collection's tabs
-        tabsGrid.innerHTML = '';
-        // Add tabs to the grid
-        collection.tabs.forEach(tab => {
-            const tabElement = this.createTabElement(tab, collectionId);
-            tabsGrid.appendChild(tabElement);
-        });
-        // Add empty collection message if no tabs
-        if (collection.tabs.length === 0) {
-            tabsGrid.style.gridTemplateColumns = '1fr';
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'empty-collection-message';
-            emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
-            tabsGrid.appendChild(emptyMessage);
-        } else {
-            tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
-        }
-        // Restore scroll position
-        tabsGrid.scrollTop = scrollTop;
-        tabsGrid.scrollLeft = scrollLeft;
-        // Update tab count in collection header
-        const collectionDiv = document.querySelector(`[data-collection-id="${collectionId}"]`);
-        if (collectionDiv) {
-            const tabCountElement = collectionDiv.querySelector('.collection-tab-count');
-            if (tabCountElement) {
-                tabCountElement.textContent = ` | ${collection.tabs.length} tabs`;
+        try {
+            const collection = this.collections.find(col => col.id === collectionId);
+            if (!collection) {
+                console.warn('updateCollectionTabs: Collection not found:', collectionId);
+                return;
             }
+            // Find the tabs grid element for this collection
+            const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+            if (!tabsGrid) {
+                console.warn('updateCollectionTabs: Tabs grid not found for collection:', collectionId);
+                return;
+            }
+            // Save current scroll position to restore later
+            const scrollTop = tabsGrid.scrollTop;
+            const scrollLeft = tabsGrid.scrollLeft;
+            // Clear the tabs grid and re-render only this collection's tabs
+            tabsGrid.innerHTML = '';
+            // Add tabs to the grid
+            collection.tabs.forEach(tab => {
+                const tabElement = this.createTabElement(tab, collectionId);
+                tabsGrid.appendChild(tabElement);
+            });
+            // Add empty collection message if no tabs
+            if (collection.tabs.length === 0) {
+                tabsGrid.style.gridTemplateColumns = '1fr';
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-collection-message';
+                emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
+                tabsGrid.appendChild(emptyMessage);
+            } else {
+                tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
+            }
+            // Restore scroll position
+            tabsGrid.scrollTop = scrollTop;
+            tabsGrid.scrollLeft = scrollLeft;
+            // Update tab count in collection header
+            const collectionDiv = document.querySelector(`[data-collection-id="${collectionId}"]`);
+            if (collectionDiv) {
+                const tabCountElement = collectionDiv.querySelector('.collection-tab-count');
+                if (tabCountElement) {
+                    tabCountElement.textContent = ` | ${collection.tabs.length} tabs`;
+                }
+            }
+            // Reinitialize SortableJS after updating the tabs grid
+            // This ensures that new tab elements are draggable
+            this.setupSortableJS(collectionId);
+        } catch (error) {
+            console.error('Error updating collection tabs:', error);
         }
     }
     // Add a tab to a collection
@@ -969,61 +1059,90 @@ class MipaTabManager {
     }
     // Update collection order based on DOM
     updateCollectionOrder(collectionId) {
-        // Find the collection
-        const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
-        if (collectionIndex === -1) {
-            return;
-        }
-        const collection = this.collections[collectionIndex];
-        // Get all tab cards in the collection
-        const container = document.getElementById(`tabs-grid-${collectionId}`);
-        if (!container) {
-            return;
-        }
-        // Get all tab cards in the container in the current DOM order
-        const tabCards = container.querySelectorAll('.tab-card');
-        // Create a new array of tabs based on DOM order
-        const newTabsOrder = [];
-        // Iterate through tab cards and build new tabs array
-        tabCards.forEach(card => {
-            const tabId = card.dataset.tabId;
-            // Find the tab in the original array
-            const tab = collection.tabs.find(t => t.id === tabId);
-            if (tab) {
-                newTabsOrder.push(tab);
-            }
-        });
-        // Update the collection's tabs array
-        this.collections[collectionIndex].tabs = newTabsOrder;
-        // Save to storage
-        this.saveCollections();
-    }
-    // Move a tab between collections
-    moveTabBetweenCollections(tabId, sourceCollectionId, targetCollectionId) {
         try {
-            // Find source and target collections
-            const sourceIndex = this.collections.findIndex(col => col.id === sourceCollectionId);
-            const targetIndex = this.collections.findIndex(col => col.id === targetCollectionId);
-            if (sourceIndex === -1 || targetIndex === -1) {
+            // Find the target collection
+            const targetIndex = this.collections.findIndex(col => col.id === collectionId);
+            if (targetIndex === -1) {
+                console.warn('updateCollectionOrder: Collection not found:', collectionId);
                 return;
             }
-            // Find the tab in source collection
-            const sourceCollection = this.collections[sourceIndex];
-            const tabIndex = sourceCollection.tabs.findIndex(tab => tab.id === tabId);
-            if (tabIndex === -1) {
+            // Get all tab cards in the target collection's container
+            const container = document.getElementById(`tabs-grid-${collectionId}`);
+            if (!container) {
+                console.warn('updateCollectionOrder: Container not found for collection:', collectionId);
                 return;
             }
-            // Remove tab from source collection
-            const [movedTab] = sourceCollection.tabs.splice(tabIndex, 1);
-            // Add tab to target collection
-            this.collections[targetIndex].tabs.push(movedTab);
-            // Save and update only the affected collections
+            // Get all direct children of the container that are tab cards
+            const tabCards = Array.from(container.children).filter(child => child.classList.contains('tab-card'));
+            // Create a map of all tabs by ID for quick lookup
+            const allTabs = new Map();
+            const tabSources = new Map();
+            // Collect all tabs from all collections
+            this.collections.forEach((col, index) => {
+                col.tabs.forEach(tab => {
+                    allTabs.set(tab.id, tab);
+                    tabSources.set(tab.id, index);
+                });
+            });
+            // Create a new array for the target collection's tabs
+            const newTabs = [];
+            const movedTabs = new Set();
+            // Get the target collection to check for duplicate URLs
+            const targetCollection = this.collections[targetIndex];
+            // Iterate through tab cards and build the new tabs array
+            tabCards.forEach(card => {
+                const tabId = card.dataset.tabId;
+                if (allTabs.has(tabId)) {
+                    const tab = allTabs.get(tabId);
+                    const sourceIndex = tabSources.get(tabId);
+                    // Check if this is a tab being moved from another collection
+                    // and if it has a duplicate URL in the target collection
+                    if (sourceIndex !== targetIndex && this.isTabUrlExists(targetCollection.id, tab.url)) {
+                        // Skip this tab if it's a duplicate from another collection
+                        console.log('Skipping duplicate tab:', tab.url);
+                        // Don't add to movedTabs, so it won't be removed from source collection
+                        return;
+                    }
+                    newTabs.push(tab);
+                    movedTabs.add(tabId);
+                }
+            });
+            // Remove moved tabs from their source collections
+            this.collections.forEach((col, index) => {
+                if (index === targetIndex) return;
+                col.tabs = col.tabs.filter(tab => !movedTabs.has(tab.id));
+            });
+            // Update the target collection's tabs
+            this.collections[targetIndex].tabs = newTabs;
+            // Debug info
+            console.log('Updated collection order:', {
+                collectionId,
+                tabCount: newTabs.length,
+                movedTabsCount: movedTabs.size
+            });
+            // Save changes with debounce
             this.saveCollections();
-            this.updateCollectionTabs(sourceCollectionId);
-            this.updateCollectionTabs(targetCollectionId);
+            // Use updateCollectionTabs instead of renderCollections to avoid full re-render
+            // This prevents flickering and残影 issues
+            this.updateCollectionTabs(collectionId);
+            // If tabs were moved from another collection, update that collection too
+            movedTabs.forEach(tabId => {
+                const sourceIndex = tabSources.get(tabId);
+                if (sourceIndex !== undefined && sourceIndex !== targetIndex) {
+                    const sourceCollection = this.collections[sourceIndex];
+                    if (sourceCollection) {
+                        this.updateCollectionTabs(sourceCollection.id);
+                    }
+                }
+            });
         } catch (error) {
-            console.error('Error moving tab between collections:', error);
+            console.error('Error updating collection order:', error);
         }
+    }
+    // This method is now obsolete, as we're directly using updateCollectionOrder
+    // to handle all tab reordering, including cross-collection drags
+    moveTabBetweenCollections(tabId, sourceCollectionId, targetCollectionId, newIndex) {
+        console.warn('moveTabBetweenCollections is obsolete, use updateCollectionOrder instead');
     }
     // Copy tab link to clipboard
     copyTabLink(url) {
@@ -1420,7 +1539,12 @@ class MipaTabManager {
 
     // Gist Sync Methods
     async syncWithGist(token = null, showAlerts = true) {
+        // Set syncing flag to prevent circular updates
+        if (this.isSyncing) {
+            return;
+        }
         try {
+            this.isSyncing = true;
             // Get GitHub Personal Access Token from storage or parameter
             let githubToken = token;
             if (!githubToken) {
@@ -1476,6 +1600,8 @@ class MipaTabManager {
         } catch (error) {
             console.error('Error syncing with Gist:', error);
             throw error;
+        } finally {
+            this.isSyncing = false;
         }
     }
     // Gist Modal Methods
@@ -1545,6 +1671,8 @@ class MipaTabManager {
     // Update loadFromGistAndMerge to accept token parameter
     async loadFromGistAndMerge(showAlerts = true, token = null) {
         try {
+            // Set syncing flag to prevent circular updates
+            this.isSyncing = true;
             // Get GitHub Personal Access Token and gist id from storage
             const result = await chrome.storage.local.get(['githubToken', 'gistId']);
             const gistToken = token || result.githubToken;
@@ -1605,6 +1733,8 @@ class MipaTabManager {
             this.checkGistLoginStatus();
         } catch (error) {
             console.error('Error loading and merging from Gist:', error);
+        } finally {
+            this.isSyncing = false;
         }
     }
 
@@ -2096,44 +2226,142 @@ class MipaTabManager {
         }
     }
     // Setup SortableJS for drag and drop functionality
-    setupSortableJS() {
-        // Initialize Sortable for each tabs grid
-        const tabsGrids = document.querySelectorAll('.tabs-grid');
+    setupSortableJS(collectionId = null) {
+        // Initialize Sortable for specific collection or all tabs grids
+        let tabsGrids;
+        if (collectionId) {
+            // Only initialize for the specified collection
+            const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
+            tabsGrids = tabsGrid ? [tabsGrid] : [];
+        } else {
+            // Initialize for all tabs grids
+            tabsGrids = document.querySelectorAll('.tabs-grid');
+        }
 
         tabsGrids.forEach(grid => {
-            new Sortable(grid, {
-                group: 'tabs', // Allow dragging between grids with the same group name
-                animation: 150, // Smooth animation
-                ghostClass: 'dragging', // Class for the ghost element
-                chosenClass: 'sortable-chosen', // Class for the chosen item
-                dragClass: 'sortable-drag', // Class for the dragging item
-                draggable: '.tab-card', // Elements that can be dragged
-                handle: '.tab-card-header', // Use only the header as drag handle
-                preventOnFilter: false, // Allow dragging even when filtered
-                onEnd: (evt) => {
+            // Remove any existing Sortable instance to prevent conflicts
+            if (grid.sortableInstance) {
+                grid.sortableInstance.destroy();
+            }
+            // Create new Sortable instance for collections
+            grid.sortableInstance = new Sortable(grid, {
+                group: {
+                    name: 'tabs',
+                    // Allow accepting items from open tabs (which uses pull: 'clone')
+                    put: true
+                },
+                animation: 150,
+                ghostClass: 'dragging',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag', // Single class name
+                draggable: '.tab-card',
+                // Accept both tab-card and open-tab-item for dragging into collections
+                accept: (evt) => {
                     const itemEl = evt.item;
+                    return itemEl.classList.contains('tab-card') || itemEl.classList.contains('open-tab-item');
+                },
+                handle: '.tab-card-header',
+                preventOnFilter: false,
+                // Handle when an item is added to this list from another list
+                onAdd: (evt) => {
+                    const fromList = evt.from;
+                    const itemEl = evt.item;
+                    const toCollectionId = evt.to.id.replace('tabs-grid-', '');
+                    // Check if this is an open tab being added from the sidebar
+                    if (fromList.classList.contains('open-tabs-list')) {
+                        // Get the tab ID from the dragged element
+                        const tabId = itemEl.dataset.tabId;
+                        // Find the actual tab data from openTabs array
+                        const openTab = this.openTabs.find(tab => tab.id === tabId);
+                        if (openTab) {
+                            // Check if tab with same URL already exists in the collection
+                            if (!this.isTabUrlExists(toCollectionId, openTab.url)) {
+                                // Add the tab to the collection
+                                const now = new Date().toISOString();
+                                const tabData = {
+                                    id: `tab-${Date.now()}`,
+                                    title: openTab.title || 'Untitled',
+                                    url: openTab.url || '',
+                                    description: openTab.title || '',
+                                    updatedAt: now
+                                };
+                                const collectionIndex = this.collections.findIndex(col => col.id === toCollectionId);
+                                if (collectionIndex !== -1) {
+                                    this.collections[collectionIndex].tabs.push(tabData);
+                                    // Update collection's updatedAt since tabs were added
+                                    this.collections[collectionIndex].updatedAt = now;
+                                    // Update only this collection's tabs, not all collections
+                                    this.updateCollectionTabs(toCollectionId);
+                                    // Save collections after updating UI to ensure data consistency
+                                    this.saveCollections();
+                                }
+                            }
+                        }
+                        // Don't remove itemEl immediately - this causes SortableJS error
+                        // Instead, hide it and let SortableJS handle the cleanup
+                        // The updateCollectionTabs call will replace it with the proper tab-card
+                        itemEl.style.display = 'none';
+                    }
+                    // Check if this is a tab being moved from another collection
+                    else if (fromList.classList.contains('tabs-grid')) {
+                        // Get the collection IDs
+                        const fromCollectionId = fromList.id.replace('tabs-grid-', '');
+                        // Update both collections' tab order
+                        this.updateCollectionOrder(toCollectionId);
+                        if (fromCollectionId !== toCollectionId) {
+                            this.updateCollectionOrder(fromCollectionId);
+                            // Save collections after updating both collections
+                            this.saveCollections();
+                        }
+                    }
+                },
+                // Handle when items are reordered within the same list
+                onEnd: (evt) => {
                     const fromGrid = evt.from;
                     const toGrid = evt.to;
-                    const tabId = itemEl.dataset.tabId;
-
-                    // Get source and target collection IDs
-                    const fromCollectionId = fromGrid.id.replace('tabs-grid-', '');
-                    const toCollectionId = toGrid.id.replace('tabs-grid-', '');
-
-                    // Update the tab's collection ID in the DOM
-                    itemEl.dataset.collectionId = toCollectionId;
-
-                    // If moved to a different collection
-                    if (fromCollectionId !== toCollectionId) {
-                        this.moveTabBetweenCollections(tabId, fromCollectionId, toCollectionId);
+                    // Only handle if it's within the same list
+                    // Between-collections handling is done in onAdd event
+                    if (fromGrid === toGrid && fromGrid.classList.contains('tabs-grid')) {
+                        const toCollectionId = toGrid.id.replace('tabs-grid-', '');
+                        this.updateCollectionOrder(toCollectionId);
+                        // Save collections after reordering within the same collection
+                        this.saveCollections();
                     }
-
-                    // Update collection order for both source and target collections
-                    this.updateCollectionOrder(fromCollectionId);
-                    this.updateCollectionOrder(toCollectionId);
                 }
             });
         });
+        // Setup SortableJS for open tabs lists (sidebar)
+        const openTabsLists = document.querySelectorAll('.open-tabs-list');
+        openTabsLists.forEach(list => {
+            // Remove any existing Sortable instance to prevent conflicts
+            if (list.sortableInstance) {
+                list.sortableInstance.destroy();
+            }
+            // Create new Sortable instance for open tabs
+            list.sortableInstance = new Sortable(list, {
+                group: {
+                    name: 'tabs',
+                    pull: 'clone', // Create a clone when dragging, don't remove from original list
+                    put: false  // Don't allow putting items into this list
+                },
+                animation: 150,
+                ghostClass: 'dragging', // Class for the ghost element (dragging preview)
+                chosenClass: 'sortable-chosen', // Class for the chosen item
+                dragClass: 'dragging', // Single class name
+                draggable: '.open-tab-item', // Allow dragging all open tab items
+                // No custom clone function - keep open tabs as长条状 when not dragging
+            });
+        });
+    }
+    // Find a tab by ID across all collections
+    findTabById(tabId) {
+        for (const collection of this.collections) {
+            const tab = collection.tabs.find(tab => tab.id === tabId);
+            if (tab) {
+                return tab;
+            }
+        }
+        return null;
     }
 
     // Create a collection from form submission

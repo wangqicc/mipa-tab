@@ -1233,9 +1233,36 @@ body.popup .collections-list {
 
 .open-tab-item.dragging {
     opacity: 0.5;
-    transform: translateX(-10px);
-    box-shadow: 0 5px 15px rgba(0, 113, 227, 0.3);
-    background-color: rgba(0, 113, 227, 0.1);
+    transform: rotate(2deg);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    /* Maintain original open-tab-item styles */
+    background-color: rgba(255, 255, 255, 0.5);
+    border-left: 3px solid #0071e3;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    width: auto;
+    min-height: auto;
+    flex-direction: row;
+}
+
+/* Style for dragged open tabs when they enter a collection */
+.tabs-grid .open-tab-item {
+    /* Ensure dragged open tabs don't affect collection layout */
+    display: none !important;
+}
+
+/* Ensure ghost element has proper styling */
+.sortable-ghost {
+    opacity: 0.3;
+    background: #c8ebfb;
+    border: 2px dashed #0071e3;
+    border-radius: 6px;
+    min-height: 120px;
+    width: 240px;
 }
 
 .collection.drag-over,
