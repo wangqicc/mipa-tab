@@ -994,12 +994,24 @@ class MipaTabManager {
     }
     // Start editing collection name
     startEditCollectionName(collectionId, nameContainer) {
-        // Hide display name
+        // Close all other edit modes first
+        const allNameContainers = document.querySelectorAll('.collection-name-container');
+        allNameContainers.forEach(container => {
+            if (container !== nameContainer) {
+                const displayName = container.querySelector('.collection-title');
+                const editName = container.querySelector('.collection-edit-name');
+                if (displayName && editName) {
+                    displayName.style.display = 'block';
+                    editName.style.display = 'none';
+                }
+            }
+        });
+        // Hide display name for current collection
         const displayName = nameContainer.querySelector('.collection-title');
         const editName = nameContainer.querySelector('.collection-edit-name');
         if (displayName && editName) {
             displayName.style.display = 'none';
-            editName.style.display = 'inline-block';
+            editName.style.display = 'flex';
             // Focus the input and select all text
             const input = editName.querySelector('.collection-name-input');
             if (input) {
