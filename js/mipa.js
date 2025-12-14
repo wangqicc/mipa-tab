@@ -2249,31 +2249,101 @@ class MipaTabManager {
                     throw new Error('Invalid data format. Expected an array of collections or version 3 format.');
                 }
 
-                // Ask user if they want to replace or merge data
-                const replaceData = confirm('Do you want to replace existing data with imported data? (Cancel to merge)');
-
-                if (replaceData) {
-                    // Replace all collections
-                    this.collections = importedCollections;
-                } else {
-                    // Merge collections (add new collections, don't replace existing ones)
-                    const existingIds = new Set(this.collections.map(col => col.id));
-                    const newCollections = importedCollections.filter(col => !existingIds.has(col.id));
-                    this.collections = [...this.collections, ...newCollections];
-                }
+                // Merge collections by name, skip duplicates, preserve existing data
+                let addedCollections = 0;
+                let updatedCollections = 0;
+                let addedTabs = 0;
+                let skippedTabs = 0;
+                // Process each imported collection
+                importedCollections.forEach(importedCol => {
+                    // Check if collection with same name exists
+                    const existingColIndex = this.collections.findIndex(col => col.name === importedCol.name);
+                    if (existingColIndex !== -1) {
+                        // Existing collection found - merge tabs
+                        const existingCol = this.collections[existingColIndex];
+                        const existingUrls = new Set(existingCol.tabs.map(tab => tab.url));
+                        // Add only new tabs with unique URLs
+                        const newTabs = importedCol.tabs.filter(tab => {
+                            const isNew = !existingUrls.has(tab.url);
+                            if (isNew) {
+                                existingUrls.add(tab.url);
+                                return true;
+                            }
+                            skippedTabs++;
+                            return false;
+                        });
+                        if (newTabs.length > 0) {
+                            // Update collection with new tabs
+                            this.collections[existingColIndex].tabs = [...existingCol.tabs, ...newTabs];
+                            updatedCollections++;
+                            addedTabs += newTabs.length;
+                        }
+                    } else {
+                        // New collection - add to existing collections
+                        this.collections.push(importedCol);
+                        addedCollections++;
+                        addedTabs += importedCol.tabs.length;
+                    }
+                });
 
                 // Save to storage and update UI
                 await this.saveCollections();
                 this.updateCollectionCount();
                 this.renderCollections();
 
-                alert('Data imported successfully!');
+                // Show detailed import results with statistics
+                const resultMessage = `Data imported successfully!\n` +
+                                      `Added collections: ${addedCollections}\n` +
+                                      `Updated collections: ${updatedCollections}\n` +
+                                      `Added tabs: ${addedTabs}\n` +
+                                      `Skipped tabs: ${skippedTabs}`;
+                this.showMessage(resultMessage);
             } catch (error) {
                 console.error('Error importing data:', error);
-                alert('Error importing data: ' + error.message);
+                this.showMessage('Error importing data: ' + error.message, 'error');
             }
         };
         reader.readAsText(file);
+    }
+    // Show notification message
+    showMessage(message, type = 'success') {
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            background-color: ${type === 'success' ? '#4CAF50' : '#f44336'};
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            min-width: auto;
+            max-width: 400px;
+            width: auto;
+            display: inline-block;
+            text-align: center;
+            line-height: 1.4;
+        `;
+        // Convert newlines to <br> tags and set as HTML
+        messageDiv.innerHTML = message.replace(/\n/g, '<br>');
+        // Add to body
+        document.body.appendChild(messageDiv);
+        // Remove after 5 seconds for more time to read detailed messages
+        setTimeout(() => {
+            messageDiv.style.opacity = '0';
+            messageDiv.style.transform = 'translateX(-50%) translateY(20px)';
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 300);
+        }, 5000);
     }
     // Setup window header click functionality for expand/collapse
     setupWindowHeaderClick() {

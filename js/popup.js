@@ -483,7 +483,8 @@ class MipaPopup {
             white-space: nowrap;
             line-height: 1.4;
         `;
-        messageDiv.textContent = message;
+        // Convert newlines to <br> tags and set as HTML
+        messageDiv.innerHTML = message.replace(/\n/g, '<br>');
         // Add to body
         document.body.appendChild(messageDiv);
         // Remove after 3 seconds
