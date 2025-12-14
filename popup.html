@@ -11,17 +11,26 @@
     <div class="popup-container">
         <header class="popup-header">
             <h1>Mipa Tab Manager</h1>
-            <button id="open-mipa-full" class="open-mipa-btn">OPEN MIPA TAB</button>
+            <div class="header-buttons">
+                <button id="open-mipa-full" class="open-mipa-btn"><i class="fas fa-window-maximize"></i> OPEN MIPA</button>
+            </div>
         </header>
         <div class="popup-main">
             <!-- Right Column - Collections -->
             <div class="popup-right">
-                <div class="search-container">
-                    <input type="text" id="collection-search" placeholder="Search for collections or spaces" class="collection-search-input">
-                </div>
-                <!-- Collections List -->
-                <div id="collections-list" class="collections-list">
-                    <!-- Collections will be dynamically added here -->
+                <!-- My Collection Section -->
+                <div class="my-collection-section">
+                    <div class="search-container">
+                        <input type="text" id="collection-search" placeholder="Search for collections or spaces" class="collection-search-input">
+                    </div>
+                    <div class="my-collection-header">
+                        <h2 class="my-collection-title">My Collection</h2>
+                        <button class="my-collection-save-btn" title="Save all tabs to a new collection"><i class="fas fa-arrow-down"></i></button>
+                    </div>
+                    <!-- Collections List -->
+                    <div id="collections-list" class="collections-list">
+                        <!-- Collections will be dynamically added here -->
+                    </div>
                 </div>
             </div>
         </div>

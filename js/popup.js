@@ -13,6 +13,12 @@ class MipaPopup {
     async init() {
         // Load collections from storage
         await this.loadCollections();
+        // Sort collections to ensure consistent order
+        this.collections.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
         // Bind event listeners
         this.bindEventListeners();
         // Render initial collections
@@ -38,6 +44,12 @@ class MipaPopup {
             const result = await chrome.storage.local.get('collections');
             if (result.collections) {
                 this.collections = result.collections;
+                // Sort collections by createdAt in descending order to show newest first
+                this.collections.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || 0);
+                    const dateB = new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
             } else {
                 this.collections = [];
             }
@@ -150,6 +162,20 @@ class MipaPopup {
     }
     // Bind event listeners
     bindEventListeners() {
+        // Save all tabs to collection - old button
+        const saveAllTabsBtn = document.getElementById('save-all-tabs');
+        if (saveAllTabsBtn) {
+            saveAllTabsBtn.addEventListener('click', () => {
+                this.saveAllTabsToCollection();
+            });
+        }
+        // Save all tabs to collection - new button in My Collection section
+        const myCollectionSaveBtn = document.querySelector('.my-collection-save-btn');
+        if (myCollectionSaveBtn) {
+            myCollectionSaveBtn.addEventListener('click', () => {
+                this.saveAllTabsToCollection();
+            });
+        }
         // Open Mipa in full tab
         const openMipaBtn = document.getElementById('open-mipa-full');
         if (openMipaBtn) {
@@ -172,6 +198,14 @@ class MipaPopup {
         try {
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
+                // Get mipa URL to avoid adding it to collections
+                const mipaUrl = chrome.runtime.getURL('mipa.html');
+                // Skip adding mipa.html itself
+                if (currentTab.url === mipaUrl) {
+                    this.showMessage('Cannot add Mipa itself to collections!', 'error');
+                    this.isAddingTab = false;
+                    return;
+                }
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     const isTabInCollection = this.collections[collectionIndex].tabs.some(tab => {
@@ -188,16 +222,15 @@ class MipaPopup {
                         this.isAddingTab = false;
                         return;
                     }
-                    const now = new Date().toISOString();
-                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '', description: currentTab.title || '', updatedAt: now };
+                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '', description: currentTab.title || '' };
                     this.collections[collectionIndex].tabs.push(tabData);
                     this.filterCollections();
                     await this.renderCollections();
                     this.showMessage('Tab saved successfully!');
                     // Ensure fixed field order before saving
                     const collectionsToSave = this.collections.map(collection => ({
-                        id: collection.id, name: collection.name || collection.title, color: collection.color, updatedAt: collection.updatedAt || now,
-                        tabs: collection.tabs.map(tab => ({ id: tab.id, title: tab.title, url: tab.url, description: tab.description, updatedAt: tab.updatedAt || now }))
+                        id: collection.id, name: collection.name || collection.title, color: collection.color, createdAt: collection.createdAt,
+                        tabs: collection.tabs.map(tab => ({ id: tab.id, title: tab.title, url: tab.url, description: tab.description }))
                     }));
                     chrome.storage.local.set({ collections: collectionsToSave }).catch(err => console.error('Error saving to storage:', err));
                     chrome.storage.local.get(['githubToken', 'gistId']).then(result => {
@@ -241,6 +274,121 @@ class MipaPopup {
         } catch (error) {
             console.error('Error saving session:', error);
         }
+    }
+    /**
+     * Save all tabs in the current window to a new collection, then open Mipa and close other tabs
+     * @async
+     * @returns {Promise<void>}
+     */
+    async saveAllTabsToCollection() {
+        try {
+            // Get mipa URL first
+            const mipaUrl = chrome.runtime.getURL('mipa.html');
+            // Get all tabs in the current window
+            const allTabs = await chrome.tabs.query({ currentWindow: true });
+            if (allTabs.length === 0) {
+                this.showMessage('No tabs to save!', 'error');
+                return;
+            }
+            // Create new collection with date+time name
+            const now = new Date();
+            // Format date and time properly
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const collectionName = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+            const collectionId = `collection-${Date.now()}`;
+            const nowIso = now.toISOString();
+            // Prepare tab data - exclude mipa.html itself
+            const tabDataArray = allTabs
+                .filter(tab => tab.url !== mipaUrl) // Skip mipa.html itself
+                .map(tab => ({
+                    id: `tab-${Date.now()}-${tab.id}`,
+                    title: tab.title || 'Untitled',
+                    url: tab.url || '',
+                    description: tab.title || ''
+                }));
+            // Create new collection with only createdAt
+            const newCollection = {
+                id: collectionId,
+                name: collectionName,
+                color: 'blue',
+                createdAt: nowIso,
+                tabs: tabDataArray
+            };
+            // Add to collections
+            this.collections.push(newCollection);
+            this.sortCollectionsByDate();
+            this.filterCollections();
+            await this.renderCollections();
+
+            // Save to storage - ensure consistent order
+            const collectionsToSave = this.prepareCollectionsForSave(nowIso);
+            await chrome.storage.local.set({ collections: collectionsToSave });
+
+            // Sync to GitHub Gist if credentials are available - wait for completion
+            const gistResult = await chrome.storage.local.get(['githubToken', 'gistId']);
+            if (gistResult.githubToken && gistResult.gistId) {
+                try {
+                    const collectionsData = JSON.stringify(collectionsToSave, null, 2);
+                    await this.updateGist(gistResult.gistId, gistResult.githubToken, collectionsData);
+                } catch (syncError) {
+                    console.error('Error syncing to Gist:', syncError);
+                }
+            }
+
+            this.showMessage('All tabs saved successfully!');
+            // NEW APPROACH: Use a completely different method
+            // 1. First, open mipa in the current window
+            const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const currentWindowId = currentTab.windowId;
+            // 2. Replace the current tab with mipa
+            await chrome.tabs.update(currentTab.id, { url: mipaUrl });
+            // 3. Now get all tabs in the window except the current one (which is now mipa)
+            const remainingTabs = await chrome.tabs.query({ windowId: currentWindowId, active: false });
+            const remainingTabIds = remainingTabs.map(tab => tab.id);
+            // 4. Close the remaining tabs
+            if (remainingTabIds.length > 0) {
+                await chrome.tabs.remove(remainingTabIds);
+            }
+        } catch (error) {
+            console.error('Error saving all tabs:', error);
+            this.showMessage('Error saving tabs', 'error');
+        }
+    }
+    /**
+     * Sort collections by createdAt in descending order
+     * @private
+     */
+    sortCollectionsByDate() {
+        this.collections.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+    }
+    /**
+     * Prepare collections for saving to storage
+     * @private
+     * @param {string} nowIso - ISO string of current date
+     * @returns {Array} - Formatted collections for storage
+     */
+    prepareCollectionsForSave(nowIso) {
+        return this.collections.map(collection => ({
+            id: collection.id,
+            name: collection.name || collection.title,
+            color: collection.color,
+            createdAt: collection.createdAt || nowIso,
+            tabs: collection.tabs.map(tab => ({
+                id: tab.id,
+                title: tab.title,
+                url: tab.url,
+                description: tab.description
+            }))
+        }));
     }
     // Open Mipa in a new tab
     async openMipaInNewTab() {
@@ -318,14 +466,22 @@ class MipaPopup {
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 10px 20px;
+            padding: 8px 16px;
             background-color: ${type === 'success' ? '#4CAF50' : '#f44336'};
             color: white;
             border-radius: 4px;
             font-size: 14px;
+            font-weight: 500;
             z-index: 1000;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
+            min-width: auto;
+            max-width: 300px;
+            width: auto;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+            line-height: 1.4;
         `;
         messageDiv.textContent = message;
         // Add to body

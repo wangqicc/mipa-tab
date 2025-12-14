@@ -1,4 +1,4 @@
-// Main script for Mipa-like Tab Manager
+// Main script for Mipa Tab Manager
 /**
  * Mipa Tab Manager class for managing browser tabs and collections
  *
@@ -132,6 +132,12 @@ class MipaTabManager {
             const result = await chrome.storage.local.get('collections');
             if (result.collections) {
                 this.collections = result.collections;
+                // Sort collections by createdAt in descending order to show newest first
+                this.collections.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || 0);
+                    const dateB = new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
             } else {
                 // Create default collections if none exist
                 this.collections = this.getDefaultCollections();
@@ -147,10 +153,8 @@ class MipaTabManager {
     }
     // Save collections to storage with debounce
     async saveCollections() {
-        clearTimeout(this.saveTimer);
-        this.saveTimer = setTimeout(async () => {
-            await this.performSaveCollections();
-        }, 300);
+        // Remove debounce delay to ensure immediate save for rapid operations
+        await this.performSaveCollections();
     }
     // Perform the actual save operation for collections
     async performSaveCollections() {
@@ -159,23 +163,17 @@ class MipaTabManager {
             return;
         }
         try {
-            this.isSaving = true;
             // Prepare collections for saving
             const collectionsToSave = this.prepareCollectionsForSaving();
-            // Check if collections have changed
-            const collectionsChanged = await this.checkIfCollectionsChanged(collectionsToSave);
-            if (collectionsChanged) {
-                // Save to local storage
-                await this.saveCollectionsToLocalStorage(collectionsToSave);
-                // Save expansion states
-                await this.saveExpansionStates();
-                // Sync with Gist if authenticated
-                await this.syncCollectionsWithGist(collectionsToSave);
-            }
+            // Always save to local storage and sync with Gist, regardless of isSaving state
+            // This ensures rapid operations (add+delete) are properly saved
+            await this.saveCollectionsToLocalStorage(collectionsToSave);
+            // Save expansion states
+            await this.saveExpansionStates();
+            // Sync with Gist if authenticated
+            await this.syncCollectionsWithGist(collectionsToSave);
         } catch (error) {
             console.error('Error saving collections:', error);
-        } finally {
-            this.isSaving = false;
         }
     }
     // Prepare collections for saving with proper formatting
@@ -185,13 +183,12 @@ class MipaTabManager {
             id: collection.id,
             name: collection.name || collection.title,
             color: collection.color,
-            updatedAt: collection.updatedAt || now,
+            createdAt: collection.createdAt || now,
             tabs: collection.tabs.map(tab => ({
                 id: tab.id,
                 title: tab.title,
                 url: tab.url,
-                description: tab.description,
-                updatedAt: tab.updatedAt || now
+                description: tab.description
             }))
         }));
     }
@@ -338,8 +335,14 @@ class MipaTabManager {
             });
 
             container.innerHTML = '';
-            // Get filtered collections
-            const filteredCollections = this.filterCollections();
+            // Get filtered collections and ensure they are sorted by createdAt
+            let filteredCollections = this.filterCollections();
+            // Sort again to ensure consistent order
+            filteredCollections = [...filteredCollections].sort((a, b) => {
+                const dateA = new Date(a.createdAt || 0);
+                const dateB = new Date(b.createdAt || 0);
+                return dateB - dateA;
+            });
             filteredCollections.forEach(collection => {
                 // Get expansion state from DOM if available, otherwise from storage, otherwise default to expanded
                 const isExpanded = domExpansionStates.has(collection.id)
@@ -430,10 +433,18 @@ class MipaTabManager {
         const editName = document.createElement('div');
         editName.className = 'collection-edit-name';
         editName.style.display = 'none';
+        // Add event listener to prevent event bubbling from the edit container
+        editName.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'collection-name-input';
         input.value = collection.name;
+        // Add event listener to prevent event bubbling from the input
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
         const saveBtn = document.createElement('button');
         saveBtn.className = 'btn-save';
         saveBtn.textContent = 'Save';
@@ -460,9 +471,32 @@ class MipaTabManager {
 
         // Create color picker
         const colorPicker = this.createColorPicker(collection);
+        // Create open all tabs button - upwards arrow icon
+        const openAllTabsBtn = document.createElement('button');
+        openAllTabsBtn.className = 'btn-action';
+        openAllTabsBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        openAllTabsBtn.dataset.tooltip = 'Open all tabs in collection';
+        openAllTabsBtn.dataset.collectionId = collection.id;
+        openAllTabsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.openAllTabsInCollection(collection.id);
+        });
+        // Create close all tabs and open collection button - merged up-down arrow icon
+        const closeAndOpenAllTabsBtn = document.createElement('button');
+        closeAndOpenAllTabsBtn.className = 'btn-action';
+        closeAndOpenAllTabsBtn.innerHTML = '<i class="fas fa-arrows-v"></i>';
+        closeAndOpenAllTabsBtn.dataset.tooltip = 'Close all tabs and open collection';
+        closeAndOpenAllTabsBtn.dataset.collectionId = collection.id;
+        closeAndOpenAllTabsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.closeAllTabsAndOpenCollection(collection.id);
+        });
         // Create delete collection button
         const deleteBtn = this.createDeleteCollectionBtn(collection.id);
+        // Reorder buttons: color picker first, then all tab buttons, then delete button
         actions.appendChild(colorPicker);
+        actions.appendChild(openAllTabsBtn);
+        actions.appendChild(closeAndOpenAllTabsBtn);
         actions.appendChild(deleteBtn);
         return actions;
     }
@@ -522,8 +556,8 @@ class MipaTabManager {
     createDeleteCollectionBtn(collectionId) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-delete';
-        deleteBtn.innerHTML = '&times; Delete';
-        deleteBtn.title = 'Delete Collection';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.dataset.tooltip = 'Delete Collection';
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.deleteCollection(collectionId);
@@ -582,8 +616,7 @@ class MipaTabManager {
             id: tab.id || `tab-${Date.now()}`,
             title: tab.title || 'Untitled',
             url: tab.url || '',
-            description: tab.description || tab.title || 'Untitled',
-            updatedAt: tab.updatedAt || new Date().toISOString()
+            description: tab.description || tab.title || 'Untitled'
         };
         const tabCard = document.createElement('div');
         tabCard.className = 'tab-card';
@@ -837,6 +870,75 @@ class MipaTabManager {
             this.saveExpansionStates();
         }
     }
+
+    // Open all tabs in a collection
+    async openAllTabsInCollection(collectionId) {
+        try {
+            const collection = this.collections.find(col => col.id === collectionId);
+            if (!collection || collection.tabs.length === 0) {
+                return;
+            }
+            // Open each tab in the collection
+            for (const tab of collection.tabs) {
+                if (tab.url) {
+                    await chrome.tabs.create({ url: tab.url, active: false });
+                }
+            }
+        } catch (error) {
+            console.error('Error opening all tabs:', error);
+        }
+    }
+    // Close all tabs and open collection tabs
+    async closeAllTabsAndOpenCollection(collectionId) {
+        try {
+            const collection = this.collections.find(col => col.id === collectionId);
+            if (!collection) {
+                return;
+            }
+            const mipaUrl = chrome.runtime.getURL('mipa.html');
+            // Get all tabs in current window first
+            const tabs = await chrome.tabs.query({ currentWindow: true });
+            // Find all mipa tabs in current window
+            const mipaTabs = tabs.filter(tab => tab.url === mipaUrl);
+            // Keep only one mipa tab (the current one if it's mipa, otherwise the first one)
+            let mipaTabToKeep = null;
+            if (tabs.some(tab => tab.active && tab.url === mipaUrl)) {
+                // Current tab is mipa, keep it
+                mipaTabToKeep = tabs.find(tab => tab.active && tab.url === mipaUrl);
+            } else if (mipaTabs.length > 0) {
+                // Keep the first mipa tab
+                mipaTabToKeep = mipaTabs[0];
+            }
+            // Get mipa tab IDs to close (all except the one to keep)
+            const mipaTabIdsToClose = mipaTabs
+                .filter(tab => mipaTabToKeep ? tab.id !== mipaTabToKeep.id : true)
+                .map(tab => tab.id);
+            // Get non-mipa tab IDs to close
+            const nonMipaTabIdsToClose = tabs
+                .filter(tab => tab.url !== mipaUrl)
+                .map(tab => tab.id);
+            // Combine all tab IDs to close
+            const allTabIdsToClose = [...mipaTabIdsToClose, ...nonMipaTabIdsToClose];
+            // Open each tab in the collection first
+            if (collection.tabs.length > 0) {
+                for (let i = 0; i < collection.tabs.length; i++) {
+                    const tab = collection.tabs[i];
+                    if (tab.url && tab.url !== mipaUrl) { // Skip opening mipa.html, we already keep one
+                        await chrome.tabs.create({
+                            url: tab.url,
+                            active: i === 0 // Only activate the first tab
+                        });
+                    }
+                }
+            }
+            // Then close all tabs that need to be closed
+            if (allTabIdsToClose.length > 0) {
+                await chrome.tabs.remove(allTabIdsToClose);
+            }
+        } catch (error) {
+            console.error('Error closing all tabs and opening collection:', error);
+        }
+    }
     // Update only the tabs in a specific collection (partial update for better performance)
     updateCollectionTabs(collectionId) {
         try {
@@ -895,24 +997,27 @@ class MipaTabManager {
             // Get current active tab
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
+                // Get mipa URL to avoid adding it to collections
+                const mipaUrl = chrome.runtime.getURL('mipa.html');
+                // Skip adding mipa.html to collections
+                if (currentTab.url === mipaUrl) {
+                    console.log('Skipping mipa.html tab, should not be added to collections');
+                    return;
+                }
                 // Check if tab with same URL already exists in the collection
                 if (this.isTabUrlExists(collectionId, currentTab.url)) {
                     console.log('Tab with the same URL already exists in the collection');
                     return;
                 }
-                const now = new Date().toISOString();
                 const tabData = {
                     id: `tab-${Date.now()}`,
                     title: currentTab.title || 'Untitled',
                     url: currentTab.url || '',
-                    description: currentTab.title || 'Untitled', // Use title as default description
-                    updatedAt: now
+                    description: currentTab.title || 'Untitled' // Use title as default description
                 };
                 const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
-                    // Update collection's updatedAt since tabs were added
-                    this.collections[collectionIndex].updatedAt = now;
                     this.updateCollectionTabs(collectionId);
                     this.saveCollections();
                     // Save session data for this collection
@@ -930,7 +1035,6 @@ class MipaTabManager {
             const newName = prompt('Enter new collection name:', collection.name);
             if (newName && newName.trim() !== collection.name) {
                 collection.name = newName.trim();
-                collection.updatedAt = new Date().toISOString();
                 this.renderCollections();
                 this.saveCollections();
             }
@@ -982,9 +1086,8 @@ class MipaTabManager {
         const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
         if (collectionIndex === -1) return;
 
-        // Update collection color and timestamp
+        // Update collection color
         this.collections[collectionIndex].color = newColor;
-        this.collections[collectionIndex].updatedAt = new Date().toISOString();
 
         // Render collections to update UI
         this.renderCollections();
@@ -1063,8 +1166,6 @@ class MipaTabManager {
             this.collections[collectionIndex].tabs = this.collections[collectionIndex].tabs.filter(
                 tab => tab.id !== tabId
             );
-            // Update collection's updatedAt since its tabs changed
-            this.collections[collectionIndex].updatedAt = new Date().toISOString();
             this.updateCollectionTabs(collectionId);
             this.saveCollections();
         }
@@ -1237,8 +1338,6 @@ class MipaTabManager {
                     tab.title = title;
                     tab.description = description;
                     tab.url = url;
-                    tab.updatedAt = now;
-                    this.collections[collectionIndex].updatedAt = now;
                     this.saveCollections();
                     this.updateCollectionTabs(this.currentEditingTab.collectionId);
                     modal.style.display = 'none';
@@ -1322,17 +1421,24 @@ class MipaTabManager {
         const selectedColor = document.querySelector('input[name="collection-color"]:checked');
         const color = selectedColor ? selectedColor.value : 'white';
 
-        // Create new collection with color, fixed property order, and timestamp
+        // Create new collection with color, fixed property order, and timestamps
         const now = new Date().toISOString();
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
             color: color,
             tabs: [],
-            updatedAt: now
+            createdAt: now
         };
 
+        // Add new collection
         this.collections.push(newCollection);
+        // Sort collections by createdAt in descending order to show newest first
+        this.collections.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
         this.renderCollections();
         this.saveCollections();
         this.hideAddCollectionForm();
@@ -1594,13 +1700,12 @@ class MipaTabManager {
                         id: collection.id,
                         name: collection.name || collection.title,
                         color: collection.color,
-                        updatedAt: collection.updatedAt || now,
+                        createdAt: collection.createdAt || now,
                         tabs: collection.tabs.map(tab => ({
                             id: tab.id,
                             title: tab.title,
                             url: tab.url,
-                            description: tab.description,
-                            updatedAt: tab.updatedAt || now
+                            description: tab.description
                         }))
                     }));
                     const collectionsData = JSON.stringify(collectionsToSave, null, 2);
@@ -1702,7 +1807,11 @@ class MipaTabManager {
             const gist = await response.json();
             const fileContent = gist.files['mipa-data.json'].content;
             const gistCollections = JSON.parse(fileContent);
-            // Merge collections from gist
+            // Get IDs of collections from gist
+            const gistCollectionIds = new Set(gistCollections.map(col => col.id));
+            // First, remove collections that exist locally but not in gist
+            this.collections = this.collections.filter(col => gistCollectionIds.has(col.id));
+            // Then, add or update collections from gist
             gistCollections.forEach(gistCol => {
                 const existingCollection = this.collections.find(col => col.id === gistCol.id);
                 if (existingCollection) {
@@ -1710,11 +1819,21 @@ class MipaTabManager {
                     existingCollection.id = gistCol.id;
                     existingCollection.name = gistCol.name || gistCol.title;
                     existingCollection.color = gistCol.color;
+                    existingCollection.createdAt = gistCol.createdAt || existingCollection.createdAt;
                     // Merge tabs with fixed property order
-                    const existingTabIds = new Set(existingCollection.tabs.map(tab => tab.id));
+                    // First, remove tabs that exist locally but not in gist
+                    const gistTabIds = new Set(gistCol.tabs.map(tab => tab.id));
+                    existingCollection.tabs = existingCollection.tabs.filter(tab => gistTabIds.has(tab.id));
+                    // Then, add or update tabs from gist
                     gistCol.tabs.forEach(gistTab => {
-                        if (!existingTabIds.has(gistTab.id)) {
-                            // Ensure tab has fixed property order when adding
+                        const existingTab = existingCollection.tabs.find(tab => tab.id === gistTab.id);
+                        if (existingTab) {
+                            // Update existing tab
+                            existingTab.title = gistTab.title;
+                            existingTab.url = gistTab.url;
+                            existingTab.description = gistTab.description;
+                        } else {
+                            // Add new tab
                             existingCollection.tabs.push({
                                 id: gistTab.id,
                                 title: gistTab.title,
@@ -1729,6 +1848,7 @@ class MipaTabManager {
                         id: gistCol.id,
                         name: gistCol.name || gistCol.title,
                         color: gistCol.color,
+                        createdAt: gistCol.createdAt || new Date().toISOString(),
                         tabs: gistCol.tabs.map(tab => ({
                             id: tab.id,
                             title: tab.title,
@@ -1737,6 +1857,12 @@ class MipaTabManager {
                         }))
                     });
                 }
+            });
+            // Sort collections by createdAt in descending order after merging
+            this.collections.sort((a, b) => {
+                const dateA = new Date(a.createdAt || 0);
+                const dateB = new Date(b.createdAt || 0);
+                return dateB - dateA;
             });
             // Save merged collections
             await this.saveCollections();
@@ -1865,13 +1991,6 @@ class MipaTabManager {
             const existingCollectionsMap = new Map(this.collections.map(col => [col.id, col]));
             const mergedCollections = [];
 
-            // Helper function to compare timestamps
-            const isNewer = (localItem, gistItem) => {
-                const localTime = localItem.updatedAt ? new Date(localItem.updatedAt) : new Date(0);
-                const gistTime = gistItem.updatedAt ? new Date(gistItem.updatedAt) : new Date(0);
-                return localTime > gistTime;
-            };
-
             // Merge collections from gist
             gistCollections.forEach(gistCol => {
                 // Ensure gist collection has fixed property order
@@ -1879,39 +1998,23 @@ class MipaTabManager {
                     id: gistCol.id,
                     name: gistCol.name || gistCol.title,
                     color: gistCol.color || 'white',
-                    updatedAt: gistCol.updatedAt || new Date(0).toISOString(),
+                    createdAt: gistCol.createdAt || new Date().toISOString(),
                     tabs: (gistCol.tabs || []).map(tab => ({
                         id: tab.id,
                         title: tab.title,
                         url: tab.url,
-                        description: tab.description,
-                        updatedAt: tab.updatedAt || new Date(0).toISOString()
+                        description: tab.description
                     }))
                 };
 
                 if (existingCollectionsMap.has(gistCol.id)) {
-                    // Collection exists locally, merge tabs and properties based on timestamp
+                    // Collection exists locally, update with gist data but preserve createdAt
                     const localCol = existingCollectionsMap.get(gistCol.id);
-                    // Ensure local collection has fixed property order and timestamp
-                    const localColWithFixedOrder = {
-                        id: localCol.id,
-                        name: localCol.name || localCol.title,
-                        color: localCol.color,
-                        updatedAt: localCol.updatedAt || new Date(0).toISOString(),
-                        tabs: localCol.tabs.map(tab => ({
-                            id: tab.id,
-                            title: tab.title,
-                            url: tab.url,
-                            description: tab.description,
-                            updatedAt: tab.updatedAt || new Date(0).toISOString()
-                        }))
-                    };
-                    // Use the newer collection properties with fixed order
                     const mergedCol = {
                         id: gistCol.id,
-                        name: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.name : gistCol.name,
-                        color: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.color : gistCol.color,
-                        updatedAt: isNewer(localColWithFixedOrder, gistCol) ? localColWithFixedOrder.updatedAt : gistCol.updatedAt,
+                        name: gistCol.name,
+                        color: gistCol.color,
+                        createdAt: localCol.createdAt, // Preserve local createdAt
                         tabs: []
                     };
 
@@ -1921,25 +2024,9 @@ class MipaTabManager {
 
                     // Merge tabs from gist with fixed order
                     gistCol.tabs.forEach(gistTab => {
-                        // Ensure gist tab has fixed property order
-                        gistTab = {
-                            id: gistTab.id,
-                            title: gistTab.title,
-                            url: gistTab.url,
-                            description: gistTab.description,
-                            updatedAt: gistTab.updatedAt || new Date(0).toISOString()
-                        };
                         if (existingTabsMap.has(gistTab.id)) {
-                            // Tab exists locally, ensure it has fixed property order and use the newer tab
-                            const localTab = existingTabsMap.get(gistTab.id);
-                            const localTabWithFixedOrder = {
-                                id: localTab.id,
-                                title: localTab.title,
-                                url: localTab.url,
-                                description: localTab.description,
-                                updatedAt: localTab.updatedAt || new Date(0).toISOString()
-                            };
-                            mergedTabs.push(isNewer(localTabWithFixedOrder, gistTab) ? localTabWithFixedOrder : gistTab);
+                            // Tab exists locally, use gist data for consistency
+                            mergedTabs.push(gistTab);
                             // Remove from existing tabs map to track remaining local tabs
                             existingTabsMap.delete(gistTab.id);
                         } else {
@@ -1954,8 +2041,7 @@ class MipaTabManager {
                             id: tab.id,
                             title: tab.title,
                             url: tab.url,
-                            description: tab.description,
-                            updatedAt: tab.updatedAt || new Date(0).toISOString()
+                            description: tab.description
                         });
                     });
 
@@ -1969,19 +2055,18 @@ class MipaTabManager {
                 }
             });
 
-            // Add remaining local collections (not in gist), ensuring they have timestamps and fixed property order
+            // Add remaining local collections (not in gist), ensuring they have fixed property order
             existingCollectionsMap.forEach(col => {
                 mergedCollections.push({
                     id: col.id,
                     name: col.name || col.title,
                     color: col.color,
-                    updatedAt: col.updatedAt || new Date(0).toISOString(),
+                    createdAt: col.createdAt || new Date().toISOString(),
                     tabs: col.tabs.map(tab => ({
                         id: tab.id,
                         title: tab.title,
                         url: tab.url,
-                        description: tab.description,
-                        updatedAt: tab.updatedAt || new Date(0).toISOString()
+                        description: tab.description
                     }))
                 });
             });
@@ -2036,13 +2121,12 @@ class MipaTabManager {
                 id: collection.id,
                 name: collection.name || collection.title,
                 color: collection.color || 'white',
-                updatedAt: collection.updatedAt || new Date(0).toISOString(),
+                createdAt: collection.createdAt || new Date().toISOString(),
                 tabs: (collection.tabs || []).map(tab => ({
                     id: tab.id,
                     title: tab.title,
                     url: tab.url,
-                    description: tab.description,
-                    updatedAt: tab.updatedAt || new Date(0).toISOString()
+                    description: tab.description
                 }))
             }));
 
@@ -2295,13 +2379,10 @@ class MipaTabManager {
                                     title: openTab.title || 'Untitled',
                                     url: openTab.url || '',
                                     description: openTab.title || '',
-                                    updatedAt: now
                                 };
                                 const collectionIndex = this.collections.findIndex(col => col.id === toCollectionId);
                                 if (collectionIndex !== -1) {
                                     this.collections[collectionIndex].tabs.push(tabData);
-                                    // Update collection's updatedAt since tabs were added
-                                    this.collections[collectionIndex].updatedAt = now;
                                     // Update only this collection's tabs, not all collections
                                     this.updateCollectionTabs(toCollectionId);
                                     // Save collections after updating UI to ensure data consistency
@@ -2378,13 +2459,21 @@ class MipaTabManager {
 
     // Create a collection from form submission
     createCollectionFromForm(name) {
+        const now = new Date().toISOString();
         const newCollection = {
             id: `collection-${Date.now()}`,
             name: name,
             color: 'white',
-            tabs: []
+            tabs: [],
+            createdAt: now
         };
         this.collections.push(newCollection);
+        // Sort collections by createdAt in descending order to show newest first
+        this.collections.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
         this.renderCollections();
         this.saveCollections();
     }
