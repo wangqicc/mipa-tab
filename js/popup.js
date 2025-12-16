@@ -302,15 +302,39 @@ class MipaPopup {
             const collectionName = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
             const collectionId = `collection-${Date.now()}`;
             const nowIso = now.toISOString();
-            // Prepare tab data - exclude mipa.html itself
-            const tabDataArray = allTabs
+            // Prepare tab data - exclude mipa.html itself and remove duplicates
+            const tabDataArray = [];
+            const processedUrls = new Set();
+            allTabs
                 .filter(tab => tab.url !== mipaUrl) // Skip mipa.html itself
-                .map(tab => ({
-                    id: `tab-${Date.now()}-${tab.id}`,
-                    title: tab.title || 'Untitled',
-                    url: tab.url || '',
-                    description: tab.title || ''
-                }));
+                .forEach(tab => {
+                    try {
+                        // Extract origin + pathname for better duplicate checking
+                        const urlObj = new URL(tab.url);
+                        const uniqueUrlKey = urlObj.origin + urlObj.pathname;
+                        // Only add if URL hasn't been processed yet
+                        if (!processedUrls.has(uniqueUrlKey)) {
+                            processedUrls.add(uniqueUrlKey);
+                            tabDataArray.push({
+                                id: `tab-${Date.now()}-${tab.id}`,
+                                title: tab.title || 'Untitled',
+                                url: tab.url || '',
+                                description: tab.title || ''
+                            });
+                        }
+                    } catch (error) {
+                        // Fallback for invalid URLs - use full URL for comparison
+                        if (!processedUrls.has(tab.url)) {
+                            processedUrls.add(tab.url);
+                            tabDataArray.push({
+                                id: `tab-${Date.now()}-${tab.id}`,
+                                title: tab.title || 'Untitled',
+                                url: tab.url || '',
+                                description: tab.title || ''
+                            });
+                        }
+                    }
+                });
             // Create new collection with only createdAt
             const newCollection = {
                 id: collectionId,

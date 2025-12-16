@@ -190,7 +190,11 @@ class MipaTabManager {
                 url: tab.url,
                 description: tab.description
             }))
-        }));
+        })).sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
     }
     // Check if collections have changed since last save
     async checkIfCollectionsChanged(collectionsToSave) {
@@ -1065,6 +1069,12 @@ class MipaTabManager {
             if (this.currentDeletingCollectionId) {
                 // Perform actual delete operation
                 this.collections = this.collections.filter(col => col.id !== this.currentDeletingCollectionId);
+                // Sort collections by createdAt in descending order after deletion
+                this.collections.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || 0);
+                    const dateB = new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
                 this.renderCollections();
                 this.saveCollections();
                 // Reset current deleting collection ID
