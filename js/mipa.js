@@ -441,8 +441,7 @@ class MipaTabManager {
     // Create collection edit name container
     createCollectionEditName(collection, nameContainer) {
         const editName = document.createElement('div');
-        editName.className = 'collection-edit-name';
-        editName.style.display = 'none';
+        editName.className = 'collection-edit-name hidden';
         // Add event listener to prevent event bubbling from the edit container
         editName.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -525,7 +524,6 @@ class MipaTabManager {
         // Color picker dropdown
         const colorPickerDropdown = document.createElement('div');
         colorPickerDropdown.className = 'color-picker-dropdown';
-        colorPickerDropdown.style.display = 'none';
         colorPickerDropdown.dataset.collectionId = collection.id;
 
         // Color options
@@ -542,7 +540,7 @@ class MipaTabManager {
                 e.stopPropagation();
                 this.changeCollectionColor(collection.id, color);
                 // Hide dropdown after selection
-                colorPickerDropdown.style.display = 'none';
+                colorPickerDropdown.classList.add('hidden');
             });
 
             colorPickerDropdown.appendChild(colorOption);
@@ -554,6 +552,11 @@ class MipaTabManager {
         });
         colorPickerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+        });
+
+        // Reset hidden state when mouse leaves the container
+        colorPickerContainer.addEventListener('mouseleave', () => {
+            colorPickerDropdown.classList.remove('hidden');
         });
 
         // Add elements to color picker container
@@ -578,7 +581,9 @@ class MipaTabManager {
     createTabsGrid(collection, isExpanded) {
         const tabsGrid = document.createElement('div');
         tabsGrid.className = 'tabs-grid';
-        tabsGrid.style.display = isExpanded ? 'grid' : 'none';
+        if (!isExpanded) {
+            tabsGrid.classList.add('hidden');
+        }
         tabsGrid.id = `tabs-grid-${collection.id}`;
         // Determine which tabs to render
         let tabsToRender = collection.tabs;
@@ -602,15 +607,12 @@ class MipaTabManager {
         // Add empty collection message if no tabs
         if (collection.tabs.length === 0) {
             // For empty collections, change grid to use single column that fills width
-            tabsGrid.style.gridTemplateColumns = '1fr';
+            tabsGrid.classList.add('grid-single-col');
 
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-collection-message';
             emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
             tabsGrid.appendChild(emptyMessage);
-        } else {
-            // For collections with tabs, use auto-fill columns
-            tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
         }
 
         return tabsGrid;
@@ -670,33 +672,18 @@ class MipaTabManager {
         // Horizontal line with updated margin
         const hr = document.createElement('hr');
         hr.className = 'tab-divider';
-        hr.style.cssText = `
-            margin: 6px 0;
-            border: none;
-            border-top: 1px solid #e0e0e0;
-        `;
+
         // Tab description
         const description = document.createElement('p');
         description.className = 'tab-description';
         description.textContent = safeTab.description;
-        description.style.cssText = `
-            font-size: 11px;
-            color: #666666;
-            margin: 0 0 0px 24px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            line-height: 1.4;
-            max-height: 39px;
-        `;
+
         // Delete button - circular icon button (top right)
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'tab-action-btn btn-delete-tab';
         deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
         // Remove title attribute to prevent default browser tooltip
-        deleteBtn.setAttribute('data-text', 'Delete');
+        deleteBtn.setAttribute('data-tooltip', 'Delete');
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.deleteTab(safeTab.id, collectionId);
@@ -706,7 +693,7 @@ class MipaTabManager {
         copyBtn.className = 'tab-action-btn btn-copy-tab';
         copyBtn.innerHTML = '<i class="fas fa-link"></i>';
         // Remove title attribute to prevent default browser tooltip
-        copyBtn.setAttribute('data-text', 'Copy');
+        copyBtn.setAttribute('data-tooltip', 'Copy');
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.copyTabLink(safeTab.url);
@@ -716,7 +703,7 @@ class MipaTabManager {
         editBtn.className = 'tab-action-btn btn-edit-tab';
         editBtn.innerHTML = '<i class="fas fa-pen"></i>';
         // Remove title attribute to prevent default browser tooltip
-        editBtn.setAttribute('data-text', 'Edit');
+        editBtn.setAttribute('data-tooltip', 'Edit');
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.editTab(safeTab.id, collectionId);
@@ -883,7 +870,7 @@ class MipaTabManager {
             // Show/hide tabs grid
             const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
             if (tabsGrid) {
-                tabsGrid.style.display = isExpanded ? 'none' : 'grid';
+                tabsGrid.classList.toggle('hidden', isExpanded);
             }
             // Update expansion states in memory and save to storage
             if (!this.expansionStates) {
@@ -988,13 +975,13 @@ class MipaTabManager {
             });
             // Add empty collection message if no tabs
             if (collection.tabs.length === 0) {
-                tabsGrid.style.gridTemplateColumns = '1fr';
+                tabsGrid.classList.add('grid-single-col');
                 const emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-collection-message';
                 emptyMessage.textContent = 'This collection is empty. Drag tabs here.';
                 tabsGrid.appendChild(emptyMessage);
             } else {
-                tabsGrid.style.gridTemplateColumns = 'repeat(auto-fill, 240px)';
+                tabsGrid.classList.remove('grid-single-col');
             }
             // Restore scroll position
             tabsGrid.scrollTop = scrollTop;
@@ -1071,17 +1058,17 @@ class MipaTabManager {
         const confirmBtn = document.getElementById('delete-confirm-btn');
         // Close modal when clicking close button
         closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('flex');
         });
         // Close modal when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('flex');
             }
         });
         // Cancel button handler
         cancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('flex');
         });
         // Confirm delete button handler
         confirmBtn.addEventListener('click', () => {
@@ -1099,7 +1086,7 @@ class MipaTabManager {
                 // Reset current deleting collection ID
                 this.currentDeletingCollectionId = null;
                 // Close modal
-                modal.style.display = 'none';
+                modal.classList.remove('flex');
             }
         });
     }
@@ -1107,7 +1094,7 @@ class MipaTabManager {
     deleteCollection(collectionId) {
         this.currentDeletingCollectionId = collectionId;
         const modal = document.getElementById('delete-modal');
-        modal.style.display = 'flex';
+        modal.classList.add('flex');
     }
 
     // Change collection color
@@ -1133,8 +1120,9 @@ class MipaTabManager {
                 const displayName = container.querySelector('.collection-title');
                 const editName = container.querySelector('.collection-edit-name');
                 if (displayName && editName) {
-                    displayName.style.display = 'block';
-                    editName.style.display = 'none';
+                    displayName.classList.remove('hidden');
+                    editName.classList.add('hidden');
+                    editName.classList.remove('flex');
                 }
             }
         });
@@ -1142,8 +1130,9 @@ class MipaTabManager {
         const displayName = nameContainer.querySelector('.collection-title');
         const editName = nameContainer.querySelector('.collection-edit-name');
         if (displayName && editName) {
-            displayName.style.display = 'none';
-            editName.style.display = 'flex';
+            displayName.classList.add('hidden');
+            editName.classList.remove('hidden');
+            editName.classList.add('flex');
             // Focus the input and select all text
             const input = editName.querySelector('.collection-name-input');
             if (input) {
@@ -1184,8 +1173,9 @@ class MipaTabManager {
         const displayName = nameContainer.querySelector('.collection-title');
         const editName = nameContainer.querySelector('.collection-edit-name');
         if (displayName && editName) {
-            displayName.style.display = 'inline';
-            editName.style.display = 'none';
+            displayName.classList.remove('hidden');
+            editName.classList.add('hidden');
+            editName.classList.remove('flex');
         }
     }
     // Delete a tab from a collection
@@ -1319,7 +1309,7 @@ class MipaTabManager {
         }
         // Open the modal
         const modal = document.getElementById('edit-tab-modal');
-        modal.style.display = 'flex';
+        modal.classList.add('flex');
         // Focus title input
         document.getElementById('edit-title').focus();
         document.getElementById('edit-title').select();
@@ -1333,24 +1323,24 @@ class MipaTabManager {
         const deleteBtn = document.getElementById('delete-tab-btn');
         // Close modal when clicking close button
         closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('flex');
         });
         // Close modal when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('flex');
             }
         });
         // Cancel button handler
         cancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.classList.remove('flex');
         });
         // Delete button handler
         deleteBtn.addEventListener('click', () => {
             if (this.currentEditingTab) {
                 const { tabId, collectionId } = this.currentEditingTab;
                 this.deleteTab(tabId, collectionId);
-                modal.style.display = 'none';
+                modal.classList.remove('flex');
             }
         });
         // Form submit handler
@@ -1369,7 +1359,7 @@ class MipaTabManager {
                     tab.url = url;
                     this.saveCollections();
                     this.updateCollectionTabs(this.currentEditingTab.collectionId);
-                    modal.style.display = 'none';
+                    modal.classList.remove('flex');
                 }
             }
         });
@@ -1396,7 +1386,7 @@ class MipaTabManager {
         // Show the add collection form
         const form = document.getElementById('add-collection-form');
         if (form) {
-            form.style.display = 'block';
+            form.classList.remove('hidden');
             // Focus the input field
             const input = document.getElementById('new-collection-name');
             if (input) {
@@ -1410,7 +1400,7 @@ class MipaTabManager {
     showAddCollectionForm() {
         const form = document.getElementById('add-collection-form');
         if (form) {
-            form.style.display = 'block';
+            form.classList.remove('hidden');
             // Focus the input field
             const input = document.getElementById('new-collection-name');
             if (input) {
@@ -1424,7 +1414,7 @@ class MipaTabManager {
     hideAddCollectionForm() {
         const form = document.getElementById('add-collection-form');
         if (form) {
-            form.style.display = 'none';
+            form.classList.add('hidden');
             // Reset the form
             const input = document.getElementById('new-collection-name');
             if (input) {
@@ -1497,7 +1487,7 @@ class MipaTabManager {
                 // Hide tabs grid
                 const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
                 if (tabsGrid) {
-                    tabsGrid.style.display = 'none';
+                    tabsGrid.classList.add('hidden');
                 }
                 // Update expansion state in memory
                 this.expansionStates[collectionId] = false;
@@ -1513,7 +1503,7 @@ class MipaTabManager {
                 // Show tabs grid
                 const tabsGrid = document.getElementById(`tabs-grid-${collectionId}`);
                 if (tabsGrid) {
-                    tabsGrid.style.display = 'grid';
+                    tabsGrid.classList.remove('hidden');
                 }
                 // Update expansion state in memory
                 this.expansionStates[collectionId] = true;
@@ -1757,32 +1747,32 @@ class MipaTabManager {
         if (mode === 'login') {
             // Show login form
             this.gistModalTitle.textContent = 'Connect to GitHub Gist';
-            this.gistLoginForm.style.display = 'block';
-            this.gistLogoutConfirm.style.display = 'none';
-            this.gistErrorMessage.style.display = 'none';
+            this.gistLoginForm.classList.remove('hidden');
+            this.gistLogoutConfirm.classList.add('hidden');
+            this.gistErrorMessage.classList.add('hidden');
         } else if (mode === 'logout') {
             // Show logout confirmation
             this.gistModalTitle.textContent = 'Logout from GitHub Gist';
-            this.gistLoginForm.style.display = 'none';
-            this.gistLogoutConfirm.style.display = 'block';
-            this.gistErrorMessage.style.display = 'none';
+            this.gistLoginForm.classList.add('hidden');
+            this.gistLogoutConfirm.classList.remove('hidden');
+            this.gistErrorMessage.classList.add('hidden');
         } else if (mode === 'error') {
             // Show error message
             this.gistModalTitle.textContent = 'Error';
-            this.gistLoginForm.style.display = 'none';
-            this.gistLogoutConfirm.style.display = 'none';
-            this.gistErrorMessage.style.display = 'block';
+            this.gistLoginForm.classList.add('hidden');
+            this.gistLogoutConfirm.classList.add('hidden');
+            this.gistErrorMessage.classList.remove('hidden');
             this.errorMessageText.textContent = errorMessage;
         }
         // Show modal
-        this.gistModal.style.display = 'flex';
+        this.gistModal.classList.add('flex');
         // Focus token input if in login mode
         if (mode === 'login') {
             this.githubTokenInput.focus();
         }
     }
     closeGistModal() {
-        this.gistModal.style.display = 'none';
+        this.gistModal.classList.remove('flex');
         // Reset form
         this.githubTokenInput.value = '';
     }
@@ -2194,7 +2184,8 @@ class MipaTabManager {
                     <span class="status-indicator"></span>
                 </div>
             `;
-            connectGistBtn.style.backgroundColor = '#4CAF50';
+            connectGistBtn.classList.add('btn-success-bg');
+            connectGistBtn.classList.remove('btn-primary-bg');
         } else {
             connectGistBtn.innerHTML = `
                 <div class="connect-status">
@@ -2203,7 +2194,8 @@ class MipaTabManager {
                     <span class="status-indicator not-synced"></span>
                 </div>
             `;
-            connectGistBtn.style.backgroundColor = '#0071e3';
+            connectGistBtn.classList.add('btn-primary-bg');
+            connectGistBtn.classList.remove('btn-success-bg');
         }
     }
 
@@ -2338,35 +2330,22 @@ class MipaTabManager {
     showMessage(message, type = 'success') {
         // Create message element
         const messageDiv = document.createElement('div');
-        messageDiv.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 16px;
-            background-color: ${type === 'success' ? '#4CAF50' : '#f44336'};
-            color: white;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-            min-width: auto;
-            max-width: 400px;
-            width: auto;
-            display: inline-block;
-            text-align: center;
-            line-height: 1.4;
-        `;
+        messageDiv.className = `toast-message ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+
         // Convert newlines to <br> tags and set as HTML
         messageDiv.innerHTML = message.replace(/\n/g, '<br>');
         // Add to body
         document.body.appendChild(messageDiv);
+
+        // Trigger reflow to enable transition
+        void messageDiv.offsetWidth;
+
+        // Add visible class
+        messageDiv.classList.add('visible');
+
         // Remove after 5 seconds for more time to read detailed messages
         setTimeout(() => {
-            messageDiv.style.opacity = '0';
-            messageDiv.style.transform = 'translateX(-50%) translateY(20px)';
+            messageDiv.classList.remove('visible');
             setTimeout(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
@@ -2492,7 +2471,7 @@ class MipaTabManager {
                         // Don't remove itemEl immediately - this causes SortableJS error
                         // Instead, hide it and let SortableJS handle the cleanup
                         // The updateCollectionTabs call will replace it with the proper tab-card
-                        itemEl.style.display = 'none';
+                        itemEl.classList.add('hidden');
                     }
                     // Check if this is a tab being moved from another collection
                     else if (fromList.classList.contains('tabs-grid')) {

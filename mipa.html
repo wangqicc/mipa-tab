@@ -37,7 +37,7 @@
                     <button id="add-collection" class="btn-primary">ADD COLLECTION</button>
                     <button id="export-data" class="btn-primary">EXPORT</button>
                     <button id="import-data" class="btn-primary">IMPORT</button>
-                    <input type="file" id="import-file-input" style="display: none;" accept=".json">
+                    <input type="file" id="import-file-input" class="hidden" accept=".json">
                 </div>
             </div>
         </header>
@@ -46,7 +46,7 @@
             <!-- Collections Area -->
             <div class="collections-area">
                 <!-- Add Collection Form -->
-                <div id="add-collection-form" class="add-collection-form" style="display: none;">
+                <div id="add-collection-form" class="add-collection-form hidden">
                     <div class="add-collection-input-group">
                         <input type="text" id="new-collection-name" placeholder="type the collection title" class="add-collection-input">
                         <button type="button" id="cancel-add-collection" class="btn-cancel">CANCEL</button>
@@ -145,7 +145,7 @@
                 </div>
             </div>
             <!-- Logout Confirmation -->
-            <div id="gist-logout-confirm" class="gist-modal-body" style="display: none;">
+            <div id="gist-logout-confirm" class="gist-modal-body hidden">
                 <div class="logout-warning">
                     <i class="fa-solid fa-exclamation-circle"></i>
                     <p>Are you sure you want to logout from GitHub Gist?</p>
@@ -157,7 +157,7 @@
                 </div>
             </div>
             <!-- Error Message -->
-            <div id="gist-error-message" class="gist-modal-body" style="display: none;">
+            <div id="gist-error-message" class="gist-modal-body hidden">
                 <div class="error-warning">
                     <i class="fa-solid fa-times-circle"></i>
                     <p id="error-message-text"></p>
@@ -168,7 +168,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal for Delete Confirmation -->
     <div id="delete-modal" class="modal">
         <div class="modal-content gist-modal-content">

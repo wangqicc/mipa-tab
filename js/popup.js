@@ -485,36 +485,22 @@ class MipaPopup {
     showMessage(message, type = 'success') {
         // Create message element
         const messageDiv = document.createElement('div');
-        messageDiv.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 16px;
-            background-color: ${type === 'success' ? '#4CAF50' : '#f44336'};
-            color: white;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-            min-width: auto;
-            max-width: 300px;
-            width: auto;
-            display: inline-block;
-            text-align: center;
-            white-space: nowrap;
-            line-height: 1.4;
-        `;
+        messageDiv.className = `toast-message ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+
         // Convert newlines to <br> tags and set as HTML
         messageDiv.innerHTML = message.replace(/\n/g, '<br>');
         // Add to body
         document.body.appendChild(messageDiv);
+
+        // Trigger reflow to enable transition
+        void messageDiv.offsetWidth;
+
+        // Add visible class
+        messageDiv.classList.add('visible');
+
         // Remove after 3 seconds
         setTimeout(() => {
-            messageDiv.style.opacity = '0';
-            messageDiv.style.transform = 'translateX(-50%) translateY(20px)';
+            messageDiv.classList.remove('visible');
             setTimeout(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
