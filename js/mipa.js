@@ -312,9 +312,15 @@ class MipaTabManager {
     // Filter collections based on search query
     filterCollections() {
         if (!this.searchQuery) return this.collections;
+        const query = this.searchQuery.toLowerCase();
         return this.collections.filter(collection => {
             const name = collection.name.toLowerCase();
-            return name.includes(this.searchQuery);
+            if (name.includes(query)) return true;
+            // Check if any tab matches
+            return collection.tabs.some(tab => {
+                return (tab.title && tab.title.toLowerCase().includes(query)) || 
+                       (tab.url && tab.url.toLowerCase().includes(query));
+            });
         });
     }
     // Render collections
@@ -574,8 +580,21 @@ class MipaTabManager {
         tabsGrid.className = 'tabs-grid';
         tabsGrid.style.display = isExpanded ? 'grid' : 'none';
         tabsGrid.id = `tabs-grid-${collection.id}`;
+        // Determine which tabs to render
+        let tabsToRender = collection.tabs;
+        // If there is a search query and the collection name doesn't match, filter tabs
+        if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            const collectionNameMatches = collection.name.toLowerCase().includes(query);
+            if (!collectionNameMatches) {
+                tabsToRender = collection.tabs.filter(tab => {
+                    return (tab.title && tab.title.toLowerCase().includes(query)) || 
+                           (tab.url && tab.url.toLowerCase().includes(query));
+                });
+            }
+        }
         // Render tabs
-        collection.tabs.forEach(tab => {
+        tabsToRender.forEach(tab => {
             const tabElement = this.createTabElement(tab, collection.id);
             tabsGrid.appendChild(tabElement);
         });
