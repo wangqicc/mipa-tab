@@ -1383,15 +1383,30 @@ class MipaTabManager {
     }
     // Create a new collection
     createCollection() {
-        // Show the add collection form
+        // Toggle the add collection form
         const form = document.getElementById('add-collection-form');
         if (form) {
-            form.classList.remove('hidden');
-            // Focus the input field
-            const input = document.getElementById('new-collection-name');
-            if (input) {
-                input.focus();
-                input.select();
+            const isHidden = form.classList.contains('hidden');
+            if (isHidden) {
+                form.classList.remove('hidden');
+                // Focus the input field
+                const input = document.getElementById('new-collection-name');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            } else {
+                form.classList.add('hidden');
+                // Reset the form
+                const input = document.getElementById('new-collection-name');
+                if (input) {
+                    input.value = '';
+                }
+                // Reset color selection to white
+                const whiteColor = document.getElementById('color-white');
+                if (whiteColor) {
+                    whiteColor.checked = true;
+                }
             }
         }
     }
