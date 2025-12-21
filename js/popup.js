@@ -4,62 +4,55 @@ class MipaPopup {
         this.collections = [];
         this.filteredCollections = [];
         this.searchQuery = '';
-        this.isAddingTab = false; // Flag to prevent multiple calls
+        this.isAddingTab = false;
+        this.debouncedSave = MipaUtils.debounce(async () => {
+            // Save to local storage first, which also updates the timestamp
+            await MipaUtils.saveToLocalStorage(this.collections);
+            // Pass the current collections to avoid reloading from storage
+            await MipaUtils.syncWithGist(this.collections);
+        }, 100);
         // Initialize the popup
         this.init();
     }
 
     // Initialize the popup
     async init() {
-        // Load collections from storage
-        await this.loadCollections();
-        // Sort collections to ensure consistent order
-        this.collections.sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0);
-            const dateB = new Date(b.createdAt || 0);
-            return dateB - dateA;
-        });
-        // Bind event listeners
-        this.bindEventListeners();
-        // Render initial collections
-        await this.renderCollections();
+        try {
+            // Load collections from storage
+            this.collections = await MipaUtils.loadCollections();
+            this.filteredCollections = [...this.collections];
+            // Bind event listeners
+            this.bindEventListeners();
+            // Render initial collections
+            await this.renderCollections();
 
-        // Add storage change listener for real-time sync from other sources
-        chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes.collections) {
-                // Only reload if we're not currently adding a tab
-                if (!this.isAddingTab) {
-                    // Reload collections and update UI
-                    this.loadCollections().then(() => {
-                        this.filterCollections();
-                        this.renderCollections();
-                    });
+            // Add storage change listener for real-time sync from other sources
+            chrome.storage.onChanged.addListener((changes, areaName) => {
+                if (areaName === 'local' && changes.collections) {
+                    // Only reload if we're not currently adding a tab
+                    if (!this.isAddingTab) {
+                        // Reload collections and update UI
+                        MipaUtils.loadCollections().then(collections => {
+                            this.collections = collections;
+                            this.filterCollections();
+                            this.renderCollections();
+                        });
+                    }
                 }
+            });
+        } catch (error) {
+            console.error('Error initializing popup:', error);
+            // Show error message in UI
+            const container = document.getElementById('collections-list');
+            if (container) {
+                container.innerHTML = '<div class="empty-state">Failed to load collections</div>';
             }
-        });
+        }
     }
     // Load collections from storage
     async loadCollections() {
-        try {
-            const result = await chrome.storage.local.get('collections');
-            if (result.collections) {
-                this.collections = result.collections;
-                // Sort collections by createdAt in descending order to show newest first
-                this.collections.sort((a, b) => {
-                    const dateA = new Date(a.createdAt || 0);
-                    const dateB = new Date(b.createdAt || 0);
-                    return dateB - dateA;
-                });
-            } else {
-                this.collections = [];
-            }
-            // Initialize filtered collections
-            this.filteredCollections = [...this.collections];
-        } catch (error) {
-            console.error('Error loading collections:', error);
-            this.collections = [];
-            this.filteredCollections = [];
-        }
+        this.collections = await MipaUtils.loadCollections();
+        this.filteredCollections = [...this.collections];
     }
     // Handle collection search
     handleCollectionSearch(event) {
@@ -88,9 +81,14 @@ class MipaPopup {
             return;
         }
 
-        // Get current active tab
-        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!currentTab) return;
+        // Get current active tab - handle potential errors
+        let currentTab = null;
+        try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            currentTab = tabs[0];
+        } catch (error) {
+            console.error('Error getting current tab:', error);
+        }
 
         this.filteredCollections.forEach(collection => {
             const collectionDiv = document.createElement('div');
@@ -118,25 +116,28 @@ class MipaPopup {
             const addTabBtn = document.createElement('button');
 
             // Check if current tab is already in this collection
-            const isTabInCollection = collection.tabs.some(tab => {
-                try {
-                    // Compare URLs by stripping query parameters and hash for better matching
-                    const currentUrl = new URL(currentTab.url);
-                    const tabUrl = new URL(tab.url);
-                    return currentUrl.origin + currentUrl.pathname === tabUrl.origin + tabUrl.pathname;
-                } catch (error) {
-                    // Fallback to simple URL comparison if parsing fails
-                    return currentTab.url === tab.url;
-                }
-            });
+            let isTabInCollection = false;
+            if (currentTab) {
+                isTabInCollection = collection.tabs.some(tab => {
+                    try {
+                        // Compare URLs by stripping query parameters and hash for better matching
+                        const currentUrl = new URL(currentTab.url);
+                        const tabUrl = new URL(tab.url);
+                        return currentUrl.origin + currentUrl.pathname === tabUrl.origin + tabUrl.pathname;
+                    } catch (error) {
+                        // Fallback to simple URL comparison if parsing fails
+                        return currentTab.url === tab.url;
+                    }
+                });
+            }
 
-            if (isTabInCollection) {
+            if (currentTab && isTabInCollection) {
                 // Tab already in collection, change icon and disable button
                 addTabBtn.className = 'add-tab-btn added';
                 addTabBtn.textContent = '✓';
                 addTabBtn.title = 'Tab already in collection';
                 addTabBtn.disabled = true;
-            } else {
+            } else if (currentTab) {
                 // Tab not in collection, show normal add button
                 addTabBtn.className = 'add-tab-btn';
                 addTabBtn.textContent = '+';
@@ -148,6 +149,12 @@ class MipaPopup {
                     e.stopPropagation();
                     this.addTabToCollection(collection.id);
                 };
+            } else {
+                // No current tab available, disable add button
+                addTabBtn.className = 'add-tab-btn disabled';
+                addTabBtn.textContent = '+';
+                addTabBtn.title = 'No active tab';
+                addTabBtn.disabled = true;
             }
 
             collectionInfo.appendChild(expander);
@@ -198,51 +205,27 @@ class MipaPopup {
         try {
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
-                // Get mipa URL to avoid adding it to collections
                 const mipaUrl = chrome.runtime.getURL('mipa.html');
-                // Skip adding mipa.html itself
                 if (currentTab.url === mipaUrl) {
                     this.showMessage('Cannot add Mipa itself to collections!', 'error');
-                    this.isAddingTab = false;
                     return;
                 }
-                const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
-                if (collectionIndex !== -1) {
-                    const isTabInCollection = this.collections[collectionIndex].tabs.some(tab => {
-                        try {
-                            const currentUrl = new URL(currentTab.url);
-                            const tabUrl = new URL(tab.url);
-                            return currentUrl.origin + currentUrl.pathname === tabUrl.origin + tabUrl.pathname;
-                        } catch (error) {
-                            return currentTab.url === tab.url;
-                        }
-                    });
-                    if (isTabInCollection) {
+                const collection = this.collections.find(col => col.id === collectionId);
+                if (collection) {
+                    if (MipaUtils.isTabInCollection(collection, currentTab.url)) {
                         this.showMessage('Tab already in collection!', 'error');
-                        this.isAddingTab = false;
                         return;
                     }
-                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '', description: currentTab.title || '' };
-                    this.collections[collectionIndex].tabs.push(tabData);
+                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '' };
+                    // Only include description if it's different from title
+                    if (currentTab.description && currentTab.description !== currentTab.title) {
+                        tabData.description = currentTab.description;
+                    }
+                    collection.tabs.push(tabData);
                     this.filterCollections();
                     await this.renderCollections();
                     this.showMessage('Tab saved successfully!');
-                    // Ensure fixed field order before saving
-                    const collectionsToSave = this.collections.map(collection => ({
-                        id: collection.id, name: collection.name || collection.title, color: collection.color, createdAt: collection.createdAt,
-                        tabs: collection.tabs.map(tab => ({ id: tab.id, title: tab.title, url: tab.url, description: tab.description }))
-                    }));
-                    chrome.storage.local.set({ collections: collectionsToSave }).catch(err => console.error('Error saving to storage:', err));
-                    chrome.storage.local.get(['githubToken', 'gistId']).then(result => {
-                        if (result.githubToken && result.gistId) {
-                            try {
-                                const collectionsData = JSON.stringify(collectionsToSave, null, 2);
-                                this.updateGist(result.gistId, result.githubToken, collectionsData).catch(syncError => console.error('Error syncing to Gist:', syncError));
-                            } catch (syncError) {
-                                console.error('Error preparing Gist sync:', syncError);
-                            }
-                        }
-                    }).catch(getErr => console.error('Error getting Gist credentials:', getErr));
+                    this.debouncedSave();
                     this.saveSession(collectionId);
                 }
             }
@@ -315,23 +298,31 @@ class MipaPopup {
                         // Only add if URL hasn't been processed yet
                         if (!processedUrls.has(uniqueUrlKey)) {
                             processedUrls.add(uniqueUrlKey);
-                            tabDataArray.push({
+                            const tabData = {
                                 id: `tab-${Date.now()}-${tab.id}`,
                                 title: tab.title || 'Untitled',
-                                url: tab.url || '',
-                                description: tab.title || ''
-                            });
+                                url: tab.url || ''
+                            };
+                            // Only include description if it's different from title
+                            if (tab.description && tab.description !== tab.title) {
+                                tabData.description = tab.description;
+                            }
+                            tabDataArray.push(tabData);
                         }
                     } catch (error) {
                         // Fallback for invalid URLs - use full URL for comparison
                         if (!processedUrls.has(tab.url)) {
                             processedUrls.add(tab.url);
-                            tabDataArray.push({
+                            const tabData = {
                                 id: `tab-${Date.now()}-${tab.id}`,
                                 title: tab.title || 'Untitled',
-                                url: tab.url || '',
-                                description: tab.title || ''
-                            });
+                                url: tab.url || ''
+                            };
+                            // Only include description if it's different from title
+                            if (tab.description && tab.description !== tab.title) {
+                                tabData.description = tab.description;
+                            }
+                            tabDataArray.push(tabData);
                         }
                     }
                 });
@@ -345,24 +336,15 @@ class MipaPopup {
             };
             // Add to collections
             this.collections.push(newCollection);
-            this.sortCollectionsByDate();
+            this.collections = MipaUtils.sortCollections(this.collections);
             this.filterCollections();
             await this.renderCollections();
 
-            // Save to storage - ensure consistent order
-            const collectionsToSave = this.prepareCollectionsForSave(nowIso);
-            await chrome.storage.local.set({ collections: collectionsToSave });
-
-            // Sync to GitHub Gist if credentials are available - wait for completion
-            const gistResult = await chrome.storage.local.get(['githubToken', 'gistId']);
-            if (gistResult.githubToken && gistResult.gistId) {
-                try {
-                    const collectionsData = JSON.stringify(collectionsToSave, null, 2);
-                    await this.updateGist(gistResult.gistId, gistResult.githubToken, collectionsData);
-                } catch (syncError) {
-                    console.error('Error syncing to Gist:', syncError);
-                }
-            }
+            // Save immediately without debounce to ensure completion before closing tabs
+            await MipaUtils.saveToLocalStorage(this.collections);
+            // Let syncWithGist handle the rest. It will check tokens, compare timestamps,
+            // and decide whether to push or pull.
+            await MipaUtils.syncWithGist(this.collections);
 
             this.showMessage('All tabs saved successfully!');
             // NEW APPROACH: Use a completely different method
@@ -383,37 +365,6 @@ class MipaPopup {
             this.showMessage('Error saving tabs', 'error');
         }
     }
-    /**
-     * Sort collections by createdAt in descending order
-     * @private
-     */
-    sortCollectionsByDate() {
-        this.collections.sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0);
-            const dateB = new Date(b.createdAt || 0);
-            return dateB - dateA;
-        });
-    }
-    /**
-     * Prepare collections for saving to storage
-     * @private
-     * @param {string} nowIso - ISO string of current date
-     * @returns {Array} - Formatted collections for storage
-     */
-    prepareCollectionsForSave(nowIso) {
-        return this.collections.map(collection => ({
-            id: collection.id,
-            name: collection.name || collection.title,
-            color: collection.color,
-            createdAt: collection.createdAt || nowIso,
-            tabs: collection.tabs.map(tab => ({
-                id: tab.id,
-                title: tab.title,
-                url: tab.url,
-                description: tab.description
-            }))
-        }));
-    }
     // Open Mipa in a new tab
     async openMipaInNewTab() {
         try {
@@ -421,64 +372,6 @@ class MipaPopup {
             await chrome.tabs.create({ url: mipaUrl });
         } catch (error) {
             console.error('Error opening Mipa in new tab:', error);
-        }
-    }
-
-    // Create a new Gist
-    async createGist(token, data) {
-        const response = await fetch('https://api.github.com/gists', {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                description: 'Mipa Tab Manager Data',
-                public: false,
-                files: {
-                    'mipa-data.json': {
-                        content: data
-                    }
-                }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to create gist: ' + response.statusText);
-        }
-
-        const gist = await response.json();
-        return gist.id;
-    }
-
-    // Update Gist with collections data
-    async updateGist(gistId, token, data) {
-        const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `token ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                files: {
-                    'mipa-data.json': {
-                        content: data
-                    }
-                }
-            })
-        });
-
-        if (!response.ok) {
-            if (response.status === 404) {
-                // If gist not found (404), create a new one、
-                const newGistId = await this.createGist(token, data);
-                // Update gistId in storage
-                await chrome.storage.local.set({ gistId: newGistId });
-                console.log('New gist created with id:', newGistId);
-            } else {
-                // For other errors, throw as before
-                throw new Error(`Failed to update gist: ${response.status} ${response.statusText}`);
-            }
         }
     }
     // Show notification message
