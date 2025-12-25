@@ -138,19 +138,11 @@ class MipaPopup {
                 addTabBtn.title = 'Tab already in collection';
                 addTabBtn.disabled = true;
             } else if (currentTab) {
-                // Tab not in collection, show normal add button
                 addTabBtn.className = 'add-tab-btn';
                 addTabBtn.textContent = '+';
                 addTabBtn.title = 'Add tab';
                 addTabBtn.disabled = false;
-
-                // Add event listener only once, using a named function to prevent duplicates
-                addTabBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.addTabToCollection(collection.id);
-                };
             } else {
-                // No current tab available, disable add button
                 addTabBtn.className = 'add-tab-btn disabled';
                 addTabBtn.textContent = '+';
                 addTabBtn.title = 'No active tab';
@@ -169,34 +161,44 @@ class MipaPopup {
     }
     // Bind event listeners
     bindEventListeners() {
-        // Save all tabs to collection - old button
         const saveAllTabsBtn = document.getElementById('save-all-tabs');
         if (saveAllTabsBtn) {
             saveAllTabsBtn.addEventListener('click', () => {
                 this.saveAllTabsToCollection();
             });
         }
-        // Save all tabs to collection - new button in My Collection section
+
         const myCollectionSaveBtn = document.querySelector('.my-collection-save-btn');
         if (myCollectionSaveBtn) {
             myCollectionSaveBtn.addEventListener('click', () => {
                 this.saveAllTabsToCollection();
             });
         }
-        // Open Mipa in full tab
+
         const openMipaBtn = document.getElementById('open-mipa-full');
         if (openMipaBtn) {
             openMipaBtn.addEventListener('click', () => {
                 this.openMipaInNewTab();
             });
         }
-        // Collection search input
+
         const searchInput = document.getElementById('collection-search');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.handleCollectionSearch(e);
             });
         }
+
+        document.addEventListener('click', (e) => {
+            const addTabBtn = e.target.closest('.add-tab-btn:not(.added):not(.disabled)');
+            if (addTabBtn) {
+                const collectionItem = e.target.closest('.collection-item');
+                if (collectionItem) {
+                    const collectionId = collectionItem.dataset.collectionId;
+                    this.addTabToCollection(collectionId);
+                }
+            }
+        }, true);
     }
     // Add a tab to a collection
     async addTabToCollection(collectionId) {
