@@ -5,12 +5,6 @@ class MipaPopup {
         this.filteredCollections = [];
         this.searchQuery = '';
         this.isAddingTab = false;
-        this.debouncedSave = MipaUtils.debounce(async () => {
-            // Save to local storage first, which also updates the timestamp
-            await MipaUtils.saveToLocalStorage(this.collections);
-            // Pass the current collections to avoid reloading from storage
-            await MipaUtils.syncWithGist(this.collections);
-        }, 100);
         // Initialize the popup
         this.init();
     }
@@ -204,39 +198,67 @@ class MipaPopup {
     async addTabToCollection(collectionId) {
         if (this.isAddingTab) return;
         this.isAddingTab = true;
+
+        const addTabBtn = document.querySelector(`.collection-item[data-collection-id="${collectionId}"] .add-tab-btn`);
+        if (addTabBtn) {
+            addTabBtn.textContent = '⟳';
+            addTabBtn.disabled = true;
+        }
+
         try {
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (currentTab) {
                 const mipaUrl = chrome.runtime.getURL('mipa.html');
                 if (currentTab.url === mipaUrl) {
                     this.showMessage('Cannot add Mipa itself to collections!', 'error');
+                    if (addTabBtn) {
+                        addTabBtn.textContent = '+';
+                        addTabBtn.disabled = false;
+                    }
                     return;
                 }
                 const collection = this.collections.find(col => col.id === collectionId);
                 if (collection) {
                     if (MipaUtils.isTabInCollection(collection, currentTab.url)) {
                         this.showMessage('Tab already in collection!', 'error');
+                        if (addTabBtn) {
+                            addTabBtn.textContent = '+';
+                            addTabBtn.disabled = false;
+                        }
                         return;
                     }
                     const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '' };
-                    // Only include description if it's different from title
                     if (currentTab.description && currentTab.description !== currentTab.title) {
                         tabData.description = currentTab.description;
                     }
                     collection.tabs.push(tabData);
                     this.filterCollections();
-                    await this.renderCollections();
+                    await this.saveToStorageAndSync();
                     this.showMessage('Tab saved successfully!');
-                    this.debouncedSave();
                     this.saveSession(collectionId);
+
+                    if (addTabBtn) {
+                        addTabBtn.textContent = '✓';
+                        addTabBtn.classList.add('added');
+                        addTabBtn.title = 'Tab already in collection';
+                    }
                 }
             }
         } catch (error) {
             console.error('Error adding tab to collection:', error);
             this.showMessage('Error saving tab', 'error');
+            if (addTabBtn) {
+                addTabBtn.textContent = '+';
+                addTabBtn.disabled = false;
+            }
         } finally {
             this.isAddingTab = false;
         }
+    }
+
+    async saveToStorageAndSync() {
+        await MipaUtils.saveToLocalStorage(this.collections);
+        await MipaUtils.syncWithGist(this.collections);
     }
     // Save session data for a collection
     saveSession(collectionId) {
