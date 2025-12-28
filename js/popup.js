@@ -389,11 +389,22 @@ class MipaPopup {
             this.showMessage('Error saving tabs', 'error');
         }
     }
-    // Open Mipa in a new tab
+    // Open Mipa in a new tab or switch to existing one
     async openMipaInNewTab() {
         try {
             const mipaUrl = chrome.runtime.getURL('mipa.html');
-            await chrome.tabs.create({ url: mipaUrl });
+            // First, check if there's already a Mipa tab open
+            const allTabs = await chrome.tabs.query({});
+            const existingMipaTab = allTabs.find(tab => tab.url === mipaUrl);
+            if (existingMipaTab) {
+                // If Mipa tab exists, switch to it
+                await chrome.tabs.update(existingMipaTab.id, { active: true });
+                // Also focus the window containing the tab
+                await chrome.windows.update(existingMipaTab.windowId, { focused: true });
+            } else {
+                // If no Mipa tab exists, create a new one
+                await chrome.tabs.create({ url: mipaUrl });
+            }
         } catch (error) {
             console.error('Error opening Mipa in new tab:', error);
         }
