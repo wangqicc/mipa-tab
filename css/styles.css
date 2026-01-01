@@ -1080,9 +1080,15 @@ body.popup .collections-list {
     visibility: visible;
 }
 
+/* Windows Container */
+#windows-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 /* Open Tabs List Styles */
 .window-tabs {
-    flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1176,7 +1182,6 @@ body.popup .collections-list {
     overflow-x: hidden;
     padding: 8px 0;
     transition: all 0.3s ease;
-    max-height: 500px; /* Set a reasonable max height for scrolling */
     height: auto; /* Allow height to adjust based on content */
 }
 
