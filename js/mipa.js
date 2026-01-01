@@ -105,6 +105,53 @@ class MipaTabManager {
             }
         });
     }
+
+    // Setup real-time tab and window event listeners
+    setupTabAndWindowListeners() {
+        // Create a debounced function to update open tabs
+        const debouncedUpdateOpenTabs = MipaUtils.debounce(async () => {
+            await this.loadOpenTabs();
+            this.renderOpenTabs();
+        }, 100);
+
+        // Listen for tab events
+        chrome.tabs.onCreated.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.tabs.onRemoved.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.tabs.onUpdated.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.tabs.onMoved.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.tabs.onDetached.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.tabs.onAttached.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        // Listen for window events
+        chrome.windows.onCreated.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.windows.onRemoved.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+
+        chrome.windows.onFocusChanged.addListener(() => {
+            debouncedUpdateOpenTabs();
+        });
+    }
     // Initialize all modals
     initModals() {
         try {
@@ -1675,6 +1722,9 @@ class MipaTabManager {
             this.loadOpenTabs();
             this.renderOpenTabs();
         }, 30000);
+
+        // Add real-time tab and window event listeners
+        this.setupTabAndWindowListeners();
         // Setup drag and drop functionality
     }
 
