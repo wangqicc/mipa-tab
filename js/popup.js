@@ -235,13 +235,16 @@ class MipaPopup {
                     this.filterCollections();
                     await this.saveToStorageAndSync();
                     this.showMessage('Tab saved successfully!');
-                    this.saveSession(collectionId);
 
+                    // 优先更新UI，让用户立即看到反馈
                     if (addTabBtn) {
                         addTabBtn.textContent = '✓';
                         addTabBtn.classList.add('added');
                         addTabBtn.title = 'Tab already in collection';
                     }
+
+                    // 异步执行saveSession，不阻塞UI
+                    this.saveSession(collectionId);
                 }
             }
         } catch (error) {
@@ -257,27 +260,30 @@ class MipaPopup {
     }
 
     async saveToStorageAndSync() {
+        // 先保存到本地存储，确保数据安全
         await MipaUtils.saveToLocalStorage(this.collections);
-        await MipaUtils.syncWithGist(this.collections);
+        // 将Gist同步改为异步执行，不阻塞UI
+        MipaUtils.syncWithGist(this.collections).catch(error => {
+            console.error('Gist同步失败:', error);
+        });
     }
-    // Save session data for a collection
-    saveSession(collectionId) {
+    // Save session data for a collection - 改为异步执行
+    async saveSession(collectionId) {
         try {
-            // Get current browser tabs in the window
-            chrome.tabs.query({ currentWindow: true }, (tabs) => {
-                // Create session data
-                const sessionData = {
-                    collectionId: collectionId,
-                    tabs: tabs.map(tab => ({
-                        title: tab.title,
-                        url: tab.url,
-                        favIconUrl: tab.favIconUrl
-                    })),
-                    timestamp: new Date().toISOString()
-                };
-                // Save session data
-                chrome.storage.local.set({ [`session_${collectionId}`]: sessionData });
-            });
+            // 使用Promise包装chrome.tabs.query，使其异步执行
+            const tabs = await chrome.tabs.query({ currentWindow: true });
+            // Create session data
+            const sessionData = {
+                collectionId: collectionId,
+                tabs: tabs.map(tab => ({
+                    title: tab.title,
+                    url: tab.url,
+                    favIconUrl: tab.favIconUrl
+                })),
+                timestamp: new Date().toISOString()
+            };
+            // Save session data
+            await chrome.storage.local.set({ [`session_${collectionId}`]: sessionData });
         } catch (error) {
             console.error('Error saving session:', error);
         }
