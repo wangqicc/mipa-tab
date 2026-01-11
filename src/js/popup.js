@@ -1,3 +1,7 @@
+import { StorageService } from './services/StorageService.js';
+import { GistService } from './services/GistService.js';
+import { MipaUtils } from './utils.js';
+
 // Popup script for Mipa-like Tab Manager
 class MipaPopup {
     constructor() {
@@ -13,7 +17,7 @@ class MipaPopup {
     async init() {
         try {
             // Load collections from storage
-            this.collections = await MipaUtils.loadCollections();
+            this.collections = await StorageService.loadCollections();
             this.filteredCollections = [...this.collections];
             // Bind event listeners
             this.bindEventListeners();
@@ -26,7 +30,7 @@ class MipaPopup {
                     // Only reload if we're not currently adding a tab
                     if (!this.isAddingTab) {
                         // Reload collections and update UI
-                        MipaUtils.loadCollections().then((collections) => {
+                        StorageService.loadCollections().then((collections) => {
                             this.collections = collections;
                             this.filterCollections();
                             this.renderCollections();
@@ -45,7 +49,7 @@ class MipaPopup {
     }
     // Load collections from storage
     async loadCollections() {
-        this.collections = await MipaUtils.loadCollections();
+        this.collections = await StorageService.loadCollections();
         this.filteredCollections = [...this.collections];
     }
     // Handle collection search
@@ -269,9 +273,9 @@ class MipaPopup {
 
     async saveToStorageAndSync() {
         // 先保存到本地存储，确保数据安全
-        await MipaUtils.saveToLocalStorage(this.collections);
+        await StorageService.saveToLocalStorage(this.collections);
         // 将Gist同步改为异步执行，不阻塞UI
-        MipaUtils.syncWithGist(this.collections).catch((error) => {
+        GistService.syncWithGist(this.collections).catch((error) => {
             console.error('Gist同步失败:', error);
         });
     }
@@ -379,10 +383,10 @@ class MipaPopup {
             await this.renderCollections();
 
             // Save immediately without debounce to ensure completion before closing tabs
-            await MipaUtils.saveToLocalStorage(this.collections);
+            await StorageService.saveToLocalStorage(this.collections);
             // Let syncWithGist handle the rest. It will check tokens, compare timestamps,
             // and decide whether to push or pull.
-            await MipaUtils.syncWithGist(this.collections);
+            await GistService.syncWithGist(this.collections);
 
             this.showMessage('All tabs saved successfully!');
             // NEW APPROACH: Use a completely different method

@@ -1,3 +1,8 @@
+import { StorageService } from './services/StorageService.js';
+import { GistService } from './services/GistService.js';
+import { MipaUtils } from './utils.js';
+import Sortable from 'sortablejs';
+
 // Main script for Mipa Tab Manager
 /**
  * Mipa Tab Manager class for managing browser tabs and collections
@@ -168,7 +173,7 @@ class MipaTabManager {
     // Setup auto-sync with Gist on initialization if logged in
     async setupAutoSync() {
         try {
-            const syncedCollections = await MipaUtils.syncWithGist(this.collections);
+            const syncedCollections = await GistService.syncWithGist(this.collections);
             if (syncedCollections) {
                 this.collections = syncedCollections;
                 this.renderCollections();
@@ -179,7 +184,7 @@ class MipaTabManager {
     }
     // Load collections from storage
     async loadCollections() {
-        this.collections = await MipaUtils.loadCollections();
+        this.collections = await StorageService.loadCollections();
         if (this.collections.length === 0) {
             // Create default collections if none exist
             this.collections = this.getDefaultCollections();
@@ -202,11 +207,11 @@ class MipaTabManager {
         this.isSaving = true;
         try {
             // Save to local storage first, which also updates the timestamp
-            await MipaUtils.saveToLocalStorage(this.collections);
+            await StorageService.saveToLocalStorage(this.collections);
             // Let syncWithGist handle the rest. It will check tokens, compare timestamps,
             // and decide whether to push or pull.
             // Pass the current collections to avoid reloading from storage (which would reorder them)
-            const syncedCollections = await MipaUtils.syncWithGist(this.collections);
+            const syncedCollections = await GistService.syncWithGist(this.collections);
             // If sync resulted in changes, update state and re-render
             if (syncedCollections) {
                 this.collections = syncedCollections;

@@ -1,4 +1,6 @@
 // Background script for Mipa-like Tab Manager
+console.log('Mipa Background Script Loaded');
+
 // Initialize storage with default data if needed
 chrome.runtime.onInstalled.addListener(() => {
     // Check if collections exist, if not, let mipa.js handle initialization

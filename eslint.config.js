@@ -4,28 +4,38 @@ const prettierConfig = require("eslint-config-prettier");
 const prettierPlugin = require("eslint-plugin-prettier");
 
 module.exports = [
+    {
+        ignores: ["dist/**", "node_modules/**"],
+    },
     js.configs.recommended,
     prettierConfig,
     {
-        files: ["js/**/*.js"],
+        files: ["src/**/*.js"],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 2022,
             sourceType: "module",
             globals: {
                 ...globals.browser,
-                chrome: "readonly",
-                MipaUtils: "readonly",
-                MipaTabManager: "readonly",
-                Sortable: "readonly"
+                ...globals.webextensions,
             },
         },
         plugins: {
             prettier: prettierPlugin,
         },
         rules: {
+            "prettier/prettier": "error",
             "no-unused-vars": "warn",
             "no-console": "off",
-            "prettier/prettier": "error"
+            "no-undef": "error"
         },
     },
+    {
+        files: ["vite.config.js", "eslint.config.js"],
+        languageOptions: {
+            sourceType: "module",
+            globals: {
+                ...globals.node
+            }
+        }
+    }
 ];
