@@ -214,7 +214,6 @@ class MipaTabManager {
             }
             this.updateCollectionCount();
             this.checkGistLoginStatus();
-
         } catch (error) {
             console.error('Error saving collections:', error);
         } finally {
@@ -226,7 +225,7 @@ class MipaTabManager {
         try {
             const expansionStates = {};
             const existingCollections = document.querySelectorAll('.collection');
-            existingCollections.forEach(colElement => {
+            existingCollections.forEach((colElement) => {
                 const collectionId = colElement.dataset.collectionId;
                 const isExpanded = colElement.classList.contains('expanded');
                 expansionStates[collectionId] = isExpanded;
@@ -268,7 +267,7 @@ class MipaTabManager {
     async loadOpenTabs() {
         try {
             const tabs = await chrome.tabs.query({});
-            this.openTabs = tabs.map(tab => ({
+            this.openTabs = tabs.map((tab) => ({
                 id: tab.id.toString(),
                 title: tab.title || 'Untitled',
                 url: tab.url || '',
@@ -295,13 +294,15 @@ class MipaTabManager {
     filterCollections() {
         if (!this.searchQuery) return this.collections;
         const query = this.searchQuery.toLowerCase();
-        return this.collections.filter(collection => {
+        return this.collections.filter((collection) => {
             const name = collection.name.toLowerCase();
             if (name.includes(query)) return true;
             // Check if any tab matches
-            return collection.tabs.some(tab => {
-                return (tab.title && tab.title.toLowerCase().includes(query)) ||
-                       (tab.url && tab.url.toLowerCase().includes(query));
+            return collection.tabs.some((tab) => {
+                return (
+                    (tab.title && tab.title.toLowerCase().includes(query)) ||
+                    (tab.url && tab.url.toLowerCase().includes(query))
+                );
             });
         });
     }
@@ -321,7 +322,7 @@ class MipaTabManager {
                 // Save expansion state of all collections from DOM before re-rendering
                 const domExpansionStates = new Map();
                 const existingCollections = document.querySelectorAll('.collection');
-                existingCollections.forEach(colElement => {
+                existingCollections.forEach((colElement) => {
                     const collectionId = colElement.dataset.collectionId;
                     const isExpanded = colElement.classList.contains('expanded');
                     domExpansionStates.set(collectionId, isExpanded);
@@ -331,12 +332,12 @@ class MipaTabManager {
                 const fragment = document.createDocumentFragment();
                 let filteredCollections = this.filterCollections();
                 filteredCollections = MipaUtils.sortCollections(filteredCollections);
-                filteredCollections.forEach(collection => {
+                filteredCollections.forEach((collection) => {
                     const isExpanded = domExpansionStates.has(collection.id)
                         ? domExpansionStates.get(collection.id)
-                        : (this.expansionStates && this.expansionStates[collection.id] !== undefined)
-                            ? this.expansionStates[collection.id]
-                            : true;
+                        : this.expansionStates && this.expansionStates[collection.id] !== undefined
+                          ? this.expansionStates[collection.id]
+                          : true;
                     const collectionElement = this.createCollectionElement(collection, isExpanded);
                     fragment.appendChild(collectionElement);
                 });
@@ -518,7 +519,7 @@ class MipaTabManager {
 
         // Color options
         const colors = ['white', 'gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'];
-        colors.forEach(color => {
+        colors.forEach((color) => {
             const colorOption = document.createElement('button');
             colorOption.className = `color-option color-${color} ${collection.color === color ? 'selected' : ''}`;
             colorOption.dataset.color = color;
@@ -583,15 +584,17 @@ class MipaTabManager {
                 const query = this.searchQuery.toLowerCase();
                 const collectionNameMatches = collection.name.toLowerCase().includes(query);
                 if (!collectionNameMatches) {
-                    tabsToRender = tabsToRender.filter(tab => {
-                        return (tab.title && tab.title.toLowerCase().includes(query)) ||
-                               (tab.url && tab.url.toLowerCase().includes(query));
+                    tabsToRender = tabsToRender.filter((tab) => {
+                        return (
+                            (tab.title && tab.title.toLowerCase().includes(query)) ||
+                            (tab.url && tab.url.toLowerCase().includes(query))
+                        );
                     });
                 }
             }
             // Render tabs using DocumentFragment for better performance
             const fragment = document.createDocumentFragment();
-            tabsToRender.forEach(tab => {
+            tabsToRender.forEach((tab) => {
                 try {
                     const tabElement = this.createTabElement(tab, collection.id);
                     fragment.appendChild(tabElement);
@@ -628,7 +631,7 @@ class MipaTabManager {
         try {
             const hostname = new URL(tab.url).hostname;
             faviconElement.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
-            faviconElement.onerror = function() {
+            faviconElement.onerror = function () {
                 this.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
             };
         } catch (error) {
@@ -757,7 +760,7 @@ class MipaTabManager {
             if (!container) return;
             // Save current expansion states before re-rendering
             const existingWindows = document.querySelectorAll('.window-tabs');
-            existingWindows.forEach(windowTabs => {
+            existingWindows.forEach((windowTabs) => {
                 const windowId = windowTabs.dataset.windowId;
                 const isExpanded = !windowTabs.classList.contains('collapsed');
                 this.windowExpansionStates[windowId] = isExpanded;
@@ -765,7 +768,7 @@ class MipaTabManager {
             container.innerHTML = '';
             // Group tabs by windowId
             const tabsByWindow = {};
-            this.openTabs.forEach(tab => {
+            this.openTabs.forEach((tab) => {
                 if (!tabsByWindow[tab.windowId]) {
                     tabsByWindow[tab.windowId] = [];
                 }
@@ -793,7 +796,8 @@ class MipaTabManager {
     createWindowElement(windowId, windowNumber, tabs) {
         try {
             // Get saved expansion state, explicitly default to expanded if not set
-            const isExpanded = this.windowExpansionStates[windowId] === undefined ? true : this.windowExpansionStates[windowId];
+            const isExpanded =
+                this.windowExpansionStates[windowId] === undefined ? true : this.windowExpansionStates[windowId];
             const windowContainer = document.createElement('div');
             windowContainer.className = `window-tabs ${isExpanded ? '' : 'collapsed'}`;
             windowContainer.dataset.windowId = windowId;
@@ -816,7 +820,7 @@ class MipaTabManager {
             tabsList.dataset.windowId = windowId;
             // Add tabs to list using DocumentFragment
             const fragment = document.createDocumentFragment();
-            tabs.forEach(tab => {
+            tabs.forEach((tab) => {
                 try {
                     const tabElement = this.createOpenTabElement(tab);
                     fragment.appendChild(tabElement);
@@ -873,7 +877,7 @@ class MipaTabManager {
     }
     // Check if a tab with the same URL already exists in the collection
     isTabUrlExists(collectionId, url) {
-        const collection = this.collections.find(col => col.id === collectionId);
+        const collection = this.collections.find((col) => col.id === collectionId);
         if (collection) {
             const normalizeUrl = (url) => {
                 try {
@@ -885,7 +889,7 @@ class MipaTabManager {
                 }
             };
             const normalizedTargetUrl = normalizeUrl(url);
-            return collection.tabs.some(tab => normalizeUrl(tab.url) === normalizedTargetUrl);
+            return collection.tabs.some((tab) => normalizeUrl(tab.url) === normalizedTargetUrl);
         }
         return false;
     }
@@ -920,7 +924,7 @@ class MipaTabManager {
     // Open all tabs in a collection
     async openAllTabsInCollection(collectionId) {
         try {
-            const collection = this.collections.find(col => col.id === collectionId);
+            const collection = this.collections.find((col) => col.id === collectionId);
             if (!collection || collection.tabs.length === 0) {
                 return;
             }
@@ -937,7 +941,7 @@ class MipaTabManager {
     // Close all tabs and open collection tabs
     async closeAllTabsAndOpenCollection(collectionId) {
         try {
-            const collection = this.collections.find(col => col.id === collectionId);
+            const collection = this.collections.find((col) => col.id === collectionId);
             if (!collection) {
                 return;
             }
@@ -945,31 +949,30 @@ class MipaTabManager {
             // Get all tabs in current window first
             const tabs = await chrome.tabs.query({ currentWindow: true });
             // Find all mipa tabs in current window
-            const mipaTabs = tabs.filter(tab => tab.url === mipaUrl);
+            const mipaTabs = tabs.filter((tab) => tab.url === mipaUrl);
             // Keep only one mipa tab (the current one if it's mipa, otherwise the first one)
             let mipaTabToKeep = null;
-            if (tabs.some(tab => tab.active && tab.url === mipaUrl)) {
+            if (tabs.some((tab) => tab.active && tab.url === mipaUrl)) {
                 // Current tab is mipa, keep it
-                mipaTabToKeep = tabs.find(tab => tab.active && tab.url === mipaUrl);
+                mipaTabToKeep = tabs.find((tab) => tab.active && tab.url === mipaUrl);
             } else if (mipaTabs.length > 0) {
                 // Keep the first mipa tab
                 mipaTabToKeep = mipaTabs[0];
             }
             // Get mipa tab IDs to close (all except the one to keep)
             const mipaTabIdsToClose = mipaTabs
-                .filter(tab => mipaTabToKeep ? tab.id !== mipaTabToKeep.id : true)
-                .map(tab => tab.id);
+                .filter((tab) => (mipaTabToKeep ? tab.id !== mipaTabToKeep.id : true))
+                .map((tab) => tab.id);
             // Get non-mipa tab IDs to close
-            const nonMipaTabIdsToClose = tabs
-                .filter(tab => tab.url !== mipaUrl)
-                .map(tab => tab.id);
+            const nonMipaTabIdsToClose = tabs.filter((tab) => tab.url !== mipaUrl).map((tab) => tab.id);
             // Combine all tab IDs to close
             const allTabIdsToClose = [...mipaTabIdsToClose, ...nonMipaTabIdsToClose];
             // Open each tab in the collection first
             if (collection.tabs.length > 0) {
                 for (let i = 0; i < collection.tabs.length; i++) {
                     const tab = collection.tabs[i];
-                    if (tab.url && tab.url !== mipaUrl) { // Skip opening mipa.html, we already keep one
+                    if (tab.url && tab.url !== mipaUrl) {
+                        // Skip opening mipa.html, we already keep one
                         await chrome.tabs.create({
                             url: tab.url,
                             active: i === 0 // Only activate the first tab
@@ -988,7 +991,7 @@ class MipaTabManager {
     // Update only the tabs in a specific collection (partial update for better performance)
     updateCollectionTabs(collectionId) {
         try {
-            const collection = this.collections.find(col => col.id === collectionId);
+            const collection = this.collections.find((col) => col.id === collectionId);
             if (!collection) {
                 console.warn('updateCollectionTabs: Collection not found:', collectionId);
                 return;
@@ -1005,7 +1008,7 @@ class MipaTabManager {
             // Clear the tabs grid and re-render only this collection's tabs
             tabsGrid.innerHTML = '';
             // Add tabs to the grid
-            collection.tabs.forEach(tab => {
+            collection.tabs.forEach((tab) => {
                 const tabElement = this.createTabElement(tab, collectionId);
                 tabsGrid.appendChild(tabElement);
             });
@@ -1061,7 +1064,7 @@ class MipaTabManager {
                     url: currentTab.url || '',
                     description: currentTab.title || 'Untitled' // Use title as default description
                 };
-                const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
+                const collectionIndex = this.collections.findIndex((col) => col.id === collectionId);
                 if (collectionIndex !== -1) {
                     this.collections[collectionIndex].tabs.push(tabData);
                     this.updateCollectionTabs(collectionId);
@@ -1076,7 +1079,7 @@ class MipaTabManager {
     }
     // Edit a collection
     editCollection(collectionId) {
-        const collection = this.collections.find(col => col.id === collectionId);
+        const collection = this.collections.find((col) => col.id === collectionId);
         if (collection) {
             const newName = prompt('Enter new collection name:', collection.name);
             if (newName && newName.trim() !== collection.name) {
@@ -1110,7 +1113,7 @@ class MipaTabManager {
         confirmBtn.addEventListener('click', () => {
             if (this.currentDeletingCollectionId) {
                 // Perform actual delete operation
-                this.collections = this.collections.filter(col => col.id !== this.currentDeletingCollectionId);
+                this.collections = this.collections.filter((col) => col.id !== this.currentDeletingCollectionId);
                 // Sort collections by createdAt in descending order after deletion
                 this.collections.sort((a, b) => {
                     const dateA = new Date(a.createdAt || 0);
@@ -1135,7 +1138,7 @@ class MipaTabManager {
 
     // Change collection color
     changeCollectionColor(collectionId, newColor) {
-        const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
+        const collectionIndex = this.collections.findIndex((col) => col.id === collectionId);
         if (collectionIndex === -1) return;
 
         // Update collection color
@@ -1151,7 +1154,7 @@ class MipaTabManager {
     startEditCollectionName(collectionId, nameContainer) {
         // Close all other edit modes first
         const allNameContainers = document.querySelectorAll('.collection-name-container');
-        allNameContainers.forEach(container => {
+        allNameContainers.forEach((container) => {
             if (container !== nameContainer) {
                 const displayName = container.querySelector('.collection-title');
                 const editName = container.querySelector('.collection-edit-name');
@@ -1196,7 +1199,7 @@ class MipaTabManager {
             return;
         }
         // Update collection name
-        const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
+        const collectionIndex = this.collections.findIndex((col) => col.id === collectionId);
         if (collectionIndex !== -1) {
             this.collections[collectionIndex].name = trimmedName;
             this.saveCollections();
@@ -1216,10 +1219,10 @@ class MipaTabManager {
     }
     // Delete a tab from a collection
     deleteTab(tabId, collectionId) {
-        const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
+        const collectionIndex = this.collections.findIndex((col) => col.id === collectionId);
         if (collectionIndex !== -1) {
             this.collections[collectionIndex].tabs = this.collections[collectionIndex].tabs.filter(
-                tab => tab.id !== tabId
+                (tab) => tab.id !== tabId
             );
             this.updateCollectionTabs(collectionId);
             this.saveCollections();
@@ -1229,7 +1232,7 @@ class MipaTabManager {
     updateCollectionOrder(collectionId) {
         try {
             // Find the target collection
-            const targetIndex = this.collections.findIndex(col => col.id === collectionId);
+            const targetIndex = this.collections.findIndex((col) => col.id === collectionId);
             if (targetIndex === -1) {
                 console.warn('updateCollectionOrder: Collection not found:', collectionId);
                 return;
@@ -1241,13 +1244,13 @@ class MipaTabManager {
                 return;
             }
             // Get all direct children of the container that are tab cards
-            const tabCards = Array.from(container.children).filter(child => child.classList.contains('tab-card'));
+            const tabCards = Array.from(container.children).filter((child) => child.classList.contains('tab-card'));
             // Create a map of all tabs by ID for quick lookup
             const allTabs = new Map();
             const tabSources = new Map();
             // Collect all tabs from all collections
             this.collections.forEach((col, index) => {
-                col.tabs.forEach(tab => {
+                col.tabs.forEach((tab) => {
                     allTabs.set(tab.id, tab);
                     tabSources.set(tab.id, index);
                 });
@@ -1258,7 +1261,7 @@ class MipaTabManager {
             // Get the target collection to check for duplicate URLs
             const targetCollection = this.collections[targetIndex];
             // Iterate through tab cards and build the new tabs array
-            tabCards.forEach(card => {
+            tabCards.forEach((card) => {
                 const tabId = card.dataset.tabId;
                 if (allTabs.has(tabId)) {
                     const tab = allTabs.get(tabId);
@@ -1278,7 +1281,7 @@ class MipaTabManager {
             // Remove moved tabs from their source collections
             this.collections.forEach((col, index) => {
                 if (index === targetIndex) return;
-                col.tabs = col.tabs.filter(tab => !movedTabs.has(tab.id));
+                col.tabs = col.tabs.filter((tab) => !movedTabs.has(tab.id));
             });
             // Update the target collection's tabs
             this.collections[targetIndex].tabs = newTabs;
@@ -1294,7 +1297,7 @@ class MipaTabManager {
             // This prevents flickering and残影 issues
             this.updateCollectionTabs(collectionId);
             // If tabs were moved from another collection, update that collection too
-            movedTabs.forEach(tabId => {
+            movedTabs.forEach((tabId) => {
                 const sourceIndex = tabSources.get(tabId);
                 if (sourceIndex !== undefined && sourceIndex !== targetIndex) {
                     const sourceCollection = this.collections[sourceIndex];
@@ -1314,17 +1317,16 @@ class MipaTabManager {
     }
     // Copy tab link to clipboard
     copyTabLink(url) {
-        navigator.clipboard.writeText(url)
-            .catch(err => {
-                console.error('Failed to copy tab link:', err);
-            });
+        navigator.clipboard.writeText(url).catch((err) => {
+            console.error('Failed to copy tab link:', err);
+        });
     }
     // Edit a tab's title, description, and URL using modal
     editTab(tabId, collectionId) {
         // Find the tab
-        const collectionIndex = this.collections.findIndex(col => col.id === collectionId);
+        const collectionIndex = this.collections.findIndex((col) => col.id === collectionId);
         if (collectionIndex === -1) return;
-        const tabIndex = this.collections[collectionIndex].tabs.findIndex(tab => tab.id === tabId);
+        const tabIndex = this.collections[collectionIndex].tabs.findIndex((tab) => tab.id === tabId);
         if (tabIndex === -1) return;
         const tab = this.collections[collectionIndex].tabs[tabIndex];
         // Store current editing tab info
@@ -1523,7 +1525,7 @@ class MipaTabManager {
         if (!this.expansionStates) {
             this.expansionStates = {};
         }
-        allCollections.forEach(collectionDiv => {
+        allCollections.forEach((collectionDiv) => {
             const collectionId = collectionDiv.dataset.collectionId;
             const isCurrentlyExpanded = collectionDiv.classList.contains('expanded');
             if (hasExpanded && isCurrentlyExpanded) {
@@ -1769,12 +1771,12 @@ class MipaTabManager {
                 } else {
                     // If no existing gist, create new one with current data
                     const now = new Date().toISOString();
-                    const collectionsToSave = this.collections.map(collection => ({
+                    const collectionsToSave = this.collections.map((collection) => ({
                         id: collection.id,
                         name: collection.name || collection.title,
                         color: collection.color,
                         createdAt: collection.createdAt || now,
-                        tabs: collection.tabs.map(tab => ({
+                        tabs: collection.tabs.map((tab) => ({
                             id: tab.id,
                             title: tab.title,
                             url: tab.url,
@@ -1874,7 +1876,7 @@ class MipaTabManager {
 
             const response = await fetch(`https://api.github.com/gists/${gistId}`, {
                 headers: {
-                    'Authorization': `token ${gistToken}`
+                    Authorization: `token ${gistToken}`
                 }
             });
 
@@ -1886,16 +1888,16 @@ class MipaTabManager {
             const fileContent = gist.files['mipa-data.json'].content;
             const gistCollections = JSON.parse(fileContent);
 
-            const existingCollectionsMap = new Map(this.collections.map(col => [col.id, col]));
+            const existingCollectionsMap = new Map(this.collections.map((col) => [col.id, col]));
             const mergedCollections = [];
 
-            gistCollections.forEach(gistCol => {
+            gistCollections.forEach((gistCol) => {
                 const normalizedGistCol = {
                     id: gistCol.id,
                     name: gistCol.name || gistCol.title,
                     color: gistCol.color || 'white',
                     createdAt: gistCol.createdAt || new Date().toISOString(),
-                    tabs: (gistCol.tabs || []).map(tab => ({
+                    tabs: (gistCol.tabs || []).map((tab) => ({
                         id: tab.id,
                         title: tab.title,
                         url: tab.url,
@@ -1905,10 +1907,10 @@ class MipaTabManager {
 
                 if (existingCollectionsMap.has(gistCol.id)) {
                     const localCol = existingCollectionsMap.get(gistCol.id);
-                    const existingTabsMap = new Map(localCol.tabs.map(tab => [tab.id, tab]));
+                    const existingTabsMap = new Map(localCol.tabs.map((tab) => [tab.id, tab]));
                     const mergedTabs = [];
 
-                    normalizedGistCol.tabs.forEach(gistTab => {
+                    normalizedGistCol.tabs.forEach((gistTab) => {
                         if (existingTabsMap.has(gistTab.id)) {
                             mergedTabs.push(gistTab);
                             existingTabsMap.delete(gistTab.id);
@@ -1917,7 +1919,7 @@ class MipaTabManager {
                         }
                     });
 
-                    existingTabsMap.forEach(tab => {
+                    existingTabsMap.forEach((tab) => {
                         mergedTabs.push({
                             id: tab.id,
                             title: tab.title,
@@ -1939,13 +1941,13 @@ class MipaTabManager {
                 }
             });
 
-            existingCollectionsMap.forEach(col => {
+            existingCollectionsMap.forEach((col) => {
                 mergedCollections.push({
                     id: col.id,
                     name: col.name || col.title,
                     color: col.color,
                     createdAt: col.createdAt || new Date().toISOString(),
-                    tabs: col.tabs.map(tab => ({
+                    tabs: col.tabs.map((tab) => ({
                         id: tab.id,
                         title: tab.title,
                         url: tab.url,
@@ -1972,11 +1974,14 @@ class MipaTabManager {
         try {
             const response = await fetch('https://api.github.com/gists', {
                 headers: {
-                    'Authorization': `token ${token}`
+                    Authorization: `token ${token}`
                 }
             });
             if (!response.ok) {
-                const errorMsg = response.status === 401 ? 'Invalid or expired GitHub token' : `Failed to fetch gists: ${response.status} ${response.statusText}`;
+                const errorMsg =
+                    response.status === 401
+                        ? 'Invalid or expired GitHub token'
+                        : `Failed to fetch gists: ${response.status} ${response.statusText}`;
                 throw new Error(errorMsg);
             }
             const gists = await response.json();
@@ -1996,7 +2001,7 @@ class MipaTabManager {
         const response = await fetch('https://api.github.com/gists', {
             method: 'POST',
             headers: {
-                'Authorization': `token ${token}`,
+                Authorization: `token ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -2011,7 +2016,10 @@ class MipaTabManager {
         });
 
         if (!response.ok) {
-            const errorMsg = response.status === 401 ? 'Invalid or expired GitHub token' : `Failed to create gist: ${response.status} ${response.statusText}`;
+            const errorMsg =
+                response.status === 401
+                    ? 'Invalid or expired GitHub token'
+                    : `Failed to create gist: ${response.status} ${response.statusText}`;
             throw new Error(errorMsg);
         }
 
@@ -2034,7 +2042,7 @@ class MipaTabManager {
             // Fetch gist data
             const response = await fetch(`https://api.github.com/gists/${gistId}`, {
                 headers: {
-                    'Authorization': `token ${token}`
+                    Authorization: `token ${token}`
                 }
             });
 
@@ -2047,12 +2055,12 @@ class MipaTabManager {
             let collections = JSON.parse(fileContent);
 
             // Ensure fixed property order for all collections and tabs
-            collections = collections.map(collection => ({
+            collections = collections.map((collection) => ({
                 id: collection.id,
                 name: collection.name || collection.title,
                 color: collection.color || 'white',
                 createdAt: collection.createdAt || new Date().toISOString(),
-                tabs: (collection.tabs || []).map(tab => ({
+                tabs: (collection.tabs || []).map((tab) => ({
                     id: tab.id,
                     title: tab.title,
                     url: tab.url,
@@ -2137,12 +2145,12 @@ class MipaTabManager {
                 // Check if it's the versioned format with lists
                 if (importedData.version && importedData.lists) {
                     // Convert version 3 format to current format
-                    importedCollections = importedData.lists.map(list => {
+                    importedCollections = importedData.lists.map((list) => {
                         // Generate unique collection ID
                         const collectionId = `collection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
                         // Map cards to tabs
-                        const tabs = list.cards.map(card => {
+                        const tabs = list.cards.map((card) => {
                             // Generate unique tab ID
                             const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -2168,11 +2176,11 @@ class MipaTabManager {
                         });
 
                         return {
-                        id: collectionId,
-                        name: list.title,
-                        color: 'white', // Default color
-                        tabs: tabs
-                    };
+                            id: collectionId,
+                            name: list.title,
+                            color: 'white', // Default color
+                            tabs: tabs
+                        };
                     });
                 } else if (Array.isArray(importedData)) {
                     // Existing format - array of collections
@@ -2187,15 +2195,15 @@ class MipaTabManager {
                 let addedTabs = 0;
                 let skippedTabs = 0;
                 // Process each imported collection
-                importedCollections.forEach(importedCol => {
+                importedCollections.forEach((importedCol) => {
                     // Check if collection with same name exists
-                    const existingColIndex = this.collections.findIndex(col => col.name === importedCol.name);
+                    const existingColIndex = this.collections.findIndex((col) => col.name === importedCol.name);
                     if (existingColIndex !== -1) {
                         // Existing collection found - merge tabs
                         const existingCol = this.collections[existingColIndex];
-                        const existingUrls = new Set(existingCol.tabs.map(tab => tab.url));
+                        const existingUrls = new Set(existingCol.tabs.map((tab) => tab.url));
                         // Add only new tabs with unique URLs
-                        const newTabs = importedCol.tabs.filter(tab => {
+                        const newTabs = importedCol.tabs.filter((tab) => {
                             const isNew = !existingUrls.has(tab.url);
                             if (isNew) {
                                 existingUrls.add(tab.url);
@@ -2224,11 +2232,12 @@ class MipaTabManager {
                 this.renderCollections();
 
                 // Show detailed import results with statistics
-                const resultMessage = `Data imported successfully!\n` +
-                                      `Added collections: ${addedCollections}\n` +
-                                      `Updated collections: ${updatedCollections}\n` +
-                                      `Added tabs: ${addedTabs}\n` +
-                                      `Skipped tabs: ${skippedTabs}`;
+                const resultMessage =
+                    `Data imported successfully!\n` +
+                    `Added collections: ${addedCollections}\n` +
+                    `Updated collections: ${updatedCollections}\n` +
+                    `Added tabs: ${addedTabs}\n` +
+                    `Skipped tabs: ${skippedTabs}`;
                 this.showMessage(resultMessage);
             } catch (error) {
                 console.error('Error importing data:', error);
@@ -2269,7 +2278,7 @@ class MipaTabManager {
         // Get all window headers
         const windowHeaders = document.querySelectorAll('.window-header');
         // Add click event listener to each header
-        windowHeaders.forEach(header => {
+        windowHeaders.forEach((header) => {
             // Remove any existing click event listeners by cloning the element
             const newHeader = header.cloneNode(true);
             header.parentNode.replaceChild(newHeader, header);
@@ -2277,7 +2286,7 @@ class MipaTabManager {
         // Re-select the headers after cloning
         const freshHeaders = document.querySelectorAll('.window-header');
         // Add fresh event listeners
-        freshHeaders.forEach(header => {
+        freshHeaders.forEach((header) => {
             // Add event listener for window header click
             header.addEventListener('click', () => {
                 // Toggle collapsed class on parent window-tabs element
@@ -2323,7 +2332,7 @@ class MipaTabManager {
             tabsGrids = document.querySelectorAll('.tabs-grid');
         }
 
-        tabsGrids.forEach(grid => {
+        tabsGrids.forEach((grid) => {
             // Remove any existing Sortable instance to prevent conflicts
             if (grid.sortableInstance) {
                 grid.sortableInstance.destroy();
@@ -2357,7 +2366,7 @@ class MipaTabManager {
                         // Get the tab ID from the dragged element
                         const tabId = itemEl.dataset.tabId;
                         // Find the actual tab data from openTabs array
-                        const openTab = this.openTabs.find(tab => tab.id === tabId);
+                        const openTab = this.openTabs.find((tab) => tab.id === tabId);
                         if (openTab) {
                             // Check if tab with same URL already exists in the collection
                             if (!this.isTabUrlExists(toCollectionId, openTab.url)) {
@@ -2367,9 +2376,9 @@ class MipaTabManager {
                                     id: `tab-${Date.now()}`,
                                     title: openTab.title || 'Untitled',
                                     url: openTab.url || '',
-                                    description: openTab.title || '',
+                                    description: openTab.title || ''
                                 };
-                                const collectionIndex = this.collections.findIndex(col => col.id === toCollectionId);
+                                const collectionIndex = this.collections.findIndex((col) => col.id === toCollectionId);
                                 if (collectionIndex !== -1) {
                                     this.collections[collectionIndex].tabs.push(tabData);
                                     // Update only this collection's tabs, not all collections
@@ -2414,7 +2423,7 @@ class MipaTabManager {
         });
         // Setup SortableJS for open tabs lists (sidebar)
         const openTabsLists = document.querySelectorAll('.open-tabs-list');
-        openTabsLists.forEach(list => {
+        openTabsLists.forEach((list) => {
             // Remove any existing Sortable instance to prevent conflicts
             if (list.sortableInstance) {
                 list.sortableInstance.destroy();
@@ -2424,13 +2433,13 @@ class MipaTabManager {
                 group: {
                     name: 'tabs',
                     pull: 'clone', // Create a clone when dragging, don't remove from original list
-                    put: false  // Don't allow putting items into this list
+                    put: false // Don't allow putting items into this list
                 },
                 animation: 150,
                 ghostClass: 'dragging', // Class for the ghost element (dragging preview)
                 chosenClass: 'sortable-chosen', // Class for the chosen item
                 dragClass: 'dragging', // Single class name
-                draggable: '.open-tab-item', // Allow dragging all open tab items
+                draggable: '.open-tab-item' // Allow dragging all open tab items
                 // No custom clone function - keep open tabs as长条状 when not dragging
             });
         });
@@ -2438,7 +2447,7 @@ class MipaTabManager {
     // Find a tab by ID across all collections
     findTabById(tabId) {
         for (const collection of this.collections) {
-            const tab = collection.tabs.find(tab => tab.id === tabId);
+            const tab = collection.tabs.find((tab) => tab.id === tabId);
             if (tab) {
                 return tab;
             }
@@ -2474,7 +2483,7 @@ class MipaTabManager {
                 // Create session data
                 const sessionData = {
                     collectionId: collectionId,
-                    tabs: tabs.map(tab => ({
+                    tabs: tabs.map((tab) => ({
                         title: tab.title,
                         url: tab.url,
                         favIconUrl: tab.favIconUrl

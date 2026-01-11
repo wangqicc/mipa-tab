@@ -26,7 +26,7 @@ class MipaPopup {
                     // Only reload if we're not currently adding a tab
                     if (!this.isAddingTab) {
                         // Reload collections and update UI
-                        MipaUtils.loadCollections().then(collections => {
+                        MipaUtils.loadCollections().then((collections) => {
                             this.collections = collections;
                             this.filterCollections();
                             this.renderCollections();
@@ -60,7 +60,7 @@ class MipaPopup {
             this.filteredCollections = [...this.collections];
             return;
         }
-        this.filteredCollections = this.collections.filter(collection => {
+        this.filteredCollections = this.collections.filter((collection) => {
             const name = collection.name.toLowerCase();
             return name.includes(this.searchQuery);
         });
@@ -84,7 +84,7 @@ class MipaPopup {
             console.error('Error getting current tab:', error);
         }
 
-        this.filteredCollections.forEach(collection => {
+        this.filteredCollections.forEach((collection) => {
             const collectionDiv = document.createElement('div');
             collectionDiv.className = `collection-item collection-color-${collection.color}`;
             collectionDiv.dataset.collectionId = collection.id;
@@ -112,7 +112,7 @@ class MipaPopup {
             // Check if current tab is already in this collection
             let isTabInCollection = false;
             if (currentTab) {
-                isTabInCollection = collection.tabs.some(tab => {
+                isTabInCollection = collection.tabs.some((tab) => {
                     try {
                         // Compare URLs by stripping query parameters and hash for better matching
                         const currentUrl = new URL(currentTab.url);
@@ -183,16 +183,20 @@ class MipaPopup {
             });
         }
 
-        document.addEventListener('click', (e) => {
-            const addTabBtn = e.target.closest('.add-tab-btn:not(.added):not(.disabled)');
-            if (addTabBtn) {
-                const collectionItem = e.target.closest('.collection-item');
-                if (collectionItem) {
-                    const collectionId = collectionItem.dataset.collectionId;
-                    this.addTabToCollection(collectionId);
+        document.addEventListener(
+            'click',
+            (e) => {
+                const addTabBtn = e.target.closest('.add-tab-btn:not(.added):not(.disabled)');
+                if (addTabBtn) {
+                    const collectionItem = e.target.closest('.collection-item');
+                    if (collectionItem) {
+                        const collectionId = collectionItem.dataset.collectionId;
+                        this.addTabToCollection(collectionId);
+                    }
                 }
-            }
-        }, true);
+            },
+            true
+        );
     }
     // Add a tab to a collection
     async addTabToCollection(collectionId) {
@@ -217,7 +221,7 @@ class MipaPopup {
                     }
                     return;
                 }
-                const collection = this.collections.find(col => col.id === collectionId);
+                const collection = this.collections.find((col) => col.id === collectionId);
                 if (collection) {
                     if (MipaUtils.isTabInCollection(collection, currentTab.url)) {
                         this.showMessage('Tab already in collection!', 'error');
@@ -227,7 +231,11 @@ class MipaPopup {
                         }
                         return;
                     }
-                    const tabData = { id: `tab-${Date.now()}`, title: currentTab.title || 'Untitled', url: currentTab.url || '' };
+                    const tabData = {
+                        id: `tab-${Date.now()}`,
+                        title: currentTab.title || 'Untitled',
+                        url: currentTab.url || ''
+                    };
                     if (currentTab.description && currentTab.description !== currentTab.title) {
                         tabData.description = currentTab.description;
                     }
@@ -263,7 +271,7 @@ class MipaPopup {
         // 先保存到本地存储，确保数据安全
         await MipaUtils.saveToLocalStorage(this.collections);
         // 将Gist同步改为异步执行，不阻塞UI
-        MipaUtils.syncWithGist(this.collections).catch(error => {
+        MipaUtils.syncWithGist(this.collections).catch((error) => {
             console.error('Gist同步失败:', error);
         });
     }
@@ -275,7 +283,7 @@ class MipaPopup {
             // Create session data
             const sessionData = {
                 collectionId: collectionId,
-                tabs: tabs.map(tab => ({
+                tabs: tabs.map((tab) => ({
                     title: tab.title,
                     url: tab.url,
                     favIconUrl: tab.favIconUrl
@@ -319,8 +327,8 @@ class MipaPopup {
             const tabDataArray = [];
             const processedUrls = new Set();
             allTabs
-                .filter(tab => tab.url !== mipaUrl) // Skip mipa.html itself
-                .forEach(tab => {
+                .filter((tab) => tab.url !== mipaUrl) // Skip mipa.html itself
+                .forEach((tab) => {
                     try {
                         // Extract origin + pathname for better duplicate checking
                         const urlObj = new URL(tab.url);
@@ -385,7 +393,7 @@ class MipaPopup {
             await chrome.tabs.update(currentTab.id, { url: mipaUrl });
             // 3. Now get all tabs in the window except the current one (which is now mipa)
             const remainingTabs = await chrome.tabs.query({ windowId: currentWindowId, active: false });
-            const remainingTabIds = remainingTabs.map(tab => tab.id);
+            const remainingTabIds = remainingTabs.map((tab) => tab.id);
             // 4. Close the remaining tabs
             if (remainingTabIds.length > 0) {
                 await chrome.tabs.remove(remainingTabIds);
@@ -401,7 +409,7 @@ class MipaPopup {
             const mipaUrl = chrome.runtime.getURL('mipa.html');
             // First, check if there's already a Mipa tab open
             const allTabs = await chrome.tabs.query({});
-            const existingMipaTab = allTabs.find(tab => tab.url === mipaUrl);
+            const existingMipaTab = allTabs.find((tab) => tab.url === mipaUrl);
             if (existingMipaTab) {
                 // If Mipa tab exists, switch to it
                 await chrome.tabs.update(existingMipaTab.id, { active: true });

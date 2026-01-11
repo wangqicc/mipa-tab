@@ -1,0 +1,31 @@
+{
+  "name": "mipa-tab",
+  "version": "1.0.0",
+  "description": "标签页管理器，帮助您将浏览器标签页组织成集合，提高浏览效率。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wangqicc/mipa-tab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/wangqicc/mipa-tab/issues"
+  },
+  "homepage": "https://github.com/wangqicc/mipa-tab#readme",
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^17.0.0",
+    "prettier": "^3.7.4"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0"
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * Utility functions for Mipa Tab Manager
  */
-const MipaUtils = {
+window.MipaUtils = {
     /**
      * Load collections from local storage
      * @returns {Promise<Array>}
@@ -37,12 +37,12 @@ const MipaUtils = {
      */
     prepareCollectionsForSaving(collections) {
         const now = new Date().toISOString();
-        return collections.map(collection => ({
+        return collections.map((collection) => ({
             id: collection.id,
             name: collection.name || collection.title,
             color: collection.color,
             createdAt: collection.createdAt || now,
-            tabs: (collection.tabs || []).map(tab => {
+            tabs: (collection.tabs || []).map((tab) => {
                 const tabData = {
                     id: tab.id || `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     title: tab.title || 'Untitled',
@@ -102,7 +102,7 @@ const MipaUtils = {
      */
     isTabInCollection(collection, url) {
         if (!collection || !collection.tabs) return false;
-        return collection.tabs.some(tab => this.compareUrls(tab.url, url));
+        return collection.tabs.some((tab) => this.compareUrls(tab.url, url));
     },
 
     /**
@@ -142,9 +142,9 @@ const MipaUtils = {
     mergeCollections(local, remote) {
         const merged = new Map();
         // Add all local collections first
-        local.forEach(c => merged.set(c.id, c));
+        local.forEach((c) => merged.set(c.id, c));
         // Update with remote collections, remote wins in case of conflict
-        remote.forEach(c => merged.set(c.id, c));
+        remote.forEach((c) => merged.set(c.id, c));
         return Array.from(merged.values());
     },
 
@@ -163,7 +163,7 @@ const MipaUtils = {
 
         try {
             const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                headers: { 'Authorization': `token ${githubToken}` }
+                headers: { Authorization: `token ${githubToken}` }
             });
 
             if (!response.ok) {
@@ -181,7 +181,7 @@ const MipaUtils = {
             const remoteUpdatedAt = new Date(gist.updated_at).getTime();
 
             // Load local collections if not provided
-            const currentLocalCollections = localCollections || await this.loadCollections();
+            const currentLocalCollections = localCollections || (await this.loadCollections());
 
             if (!remoteContent) {
                 console.warn('Remote Gist is empty. Pushing local data.');
@@ -224,7 +224,7 @@ const MipaUtils = {
         await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
             headers: {
-                'Authorization': `token ${token}`,
+                Authorization: `token ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
