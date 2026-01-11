@@ -24,6 +24,7 @@
 
 ## 技术栈
 
+- **构建工具**: Vite
 - **前端框架**: 原生 HTML/CSS/JavaScript
 - **扩展架构**: Chrome Manifest V3
 - **拖放库**: SortableJS
@@ -34,11 +35,19 @@
 ## 安装
 
 1. 克隆或下载此仓库
-2. 打开 Chrome 浏览器
-3. 转到 `chrome://extensions/`
-4. 启用右上角的 "开发者模式"
-5. 点击 "加载已解压的扩展程序" 并选择下载的仓库文件夹
-6. 扩展程序将被添加到您的 Chrome 浏览器
+2. 安装依赖：
+   ```bash
+   npm install
+   ```
+3. 构建项目：
+   ```bash
+   npm run build
+   ```
+4. 打开 Chrome 浏览器
+5. 转到 `chrome://extensions/`
+6. 启用右上角的 "开发者模式"
+7. 点击 "加载已解压的扩展程序" 并选择项目目录下的 `dist` 文件夹
+8. 扩展程序将被添加到您的 Chrome 浏览器
 
 ## 使用方法
 

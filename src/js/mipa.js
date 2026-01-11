@@ -2,6 +2,7 @@ import { StorageService } from './services/StorageService.js';
 import { GistService } from './services/GistService.js';
 import { MipaUtils } from './utils.js';
 import Sortable from 'sortablejs';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // Main script for Mipa Tab Manager
 /**

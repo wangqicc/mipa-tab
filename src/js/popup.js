@@ -1,6 +1,7 @@
 import { StorageService } from './services/StorageService.js';
 import { GistService } from './services/GistService.js';
 import { MipaUtils } from './utils.js';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // Popup script for Mipa-like Tab Manager
 class MipaPopup {
