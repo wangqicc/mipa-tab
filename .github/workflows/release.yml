@@ -34,7 +34,7 @@ jobs:
           cd ..
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: mipa-tab.zip
           generate_release_notes: true # Automatically generate release notes from commits
