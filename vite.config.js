@@ -1,23 +1,24 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { crx } from '@crxjs/vite-plugin';
+import manifest from './src/manifest.json';
 
 export default defineConfig({
   root: 'src',
-  base: '',
+  plugins: [crx({ manifest })],
   build: {
     outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        mipa: resolve(__dirname, 'src/mipa.html'),
-        popup: resolve(__dirname, 'src/popup.html'),
-        background: resolve(__dirname, 'src/js/background.js')
+        mipa: 'src/mipa.html',
       },
-      output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
-      }
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
     },
   },
 });
