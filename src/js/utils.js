@@ -71,5 +71,23 @@ export const MipaUtils = {
      */
     deterministicStringify(obj) {
         return JSON.stringify(obj, null, 2);
+    },
+
+    /**
+     * Helper method to set up favicon with fallbacks
+     * @param {HTMLElement} faviconElement
+     * @param {Object} tab
+     */
+    setupFavicon(faviconElement, tab) {
+        faviconElement.alt = tab.title || '';
+        try {
+            const hostname = new URL(tab.url).hostname;
+            faviconElement.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
+            faviconElement.onerror = function () {
+                this.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+            };
+        } catch (error) {
+            faviconElement.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+        }
     }
 };
