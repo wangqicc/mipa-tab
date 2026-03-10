@@ -140,7 +140,7 @@ class MipaTabManager {
 
         // Listen for storage changes (e.g. from popup)
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes.collections && !this.collectionManager.isSaving && !this.collectionManager.isSyncing) {
+            if (areaName === 'local' && changes.collections) {
                 this.collectionManager.load().then(() => {
                     this.render();
                 });
@@ -364,8 +364,6 @@ class MipaTabManager {
             });
         });
     }
-
-
 
     async openAllTabsInCollection(id) {
         const col = this.collectionManager.getCollections().find((c) => c.id === id);

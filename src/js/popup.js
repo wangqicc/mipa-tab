@@ -10,6 +10,7 @@ class MipaPopup {
         this.filteredCollections = [];
         this.searchQuery = '';
         this.isAddingTab = false;
+        this.lastSaveTime = 0;
         // Initialize the popup
         this.init();
     }
@@ -28,9 +29,11 @@ class MipaPopup {
             // Add storage change listener for real-time sync from other sources
             chrome.storage.onChanged.addListener((changes, areaName) => {
                 if (areaName === 'local' && changes.collections) {
-                    // Only reload if we're not currently adding a tab
+                    const now = Date.now();
+                    if (now - this.lastSaveTime < 500) {
+                        return;
+                    }
                     if (!this.isAddingTab) {
-                        // Reload collections and update UI
                         StorageService.loadCollections().then((collections) => {
                             this.collections = collections;
                             this.filterCollections();
@@ -273,9 +276,8 @@ class MipaPopup {
     }
 
     async saveToStorageAndSync() {
-        // 先保存到本地存储，确保数据安全
+        this.lastSaveTime = Date.now();
         await StorageService.saveToLocalStorage(this.collections);
-        // 将Gist同步改为异步执行，不阻塞UI
         GistService.syncWithGist(this.collections).catch((error) => {
             console.error('Gist同步失败:', error);
         });
@@ -383,10 +385,8 @@ class MipaPopup {
             this.filterCollections();
             await this.renderCollections();
 
-            // Save immediately without debounce to ensure completion before closing tabs
+            this.lastSaveTime = Date.now();
             await StorageService.saveToLocalStorage(this.collections);
-            // Let syncWithGist handle the rest. It will check tokens, compare timestamps,
-            // and decide whether to push or pull.
             await GistService.syncWithGist(this.collections);
 
             this.showMessage('All tabs saved successfully!');

@@ -1,19 +1,33 @@
 import { MipaUtils } from '../utils.js';
 
 export const StorageService = {
+    VERSION_KEY: 'collectionsVersion',
+    COLLECTIONS_KEY: 'collections',
+    lastKnownVersion: null,
+
     /**
      * Load collections from local storage
      * @returns {Promise<Array>}
      */
     async loadCollections() {
         try {
-            const result = await chrome.storage.local.get('collections');
+            const result = await chrome.storage.local.get([this.COLLECTIONS_KEY, this.VERSION_KEY]);
             let collections = result.collections || [];
+            this.lastKnownVersion = result[this.VERSION_KEY] || 0;
             return MipaUtils.sortCollections(collections);
         } catch (error) {
             console.error('Error loading collections:', error);
             return [];
         }
+    },
+
+    /**
+     * Get current stored version
+     * @returns {Promise<number>}
+     */
+    async getVersion() {
+        const result = await chrome.storage.local.get(this.VERSION_KEY);
+        return result[this.VERSION_KEY] || 0;
     },
 
     /**
@@ -34,7 +48,6 @@ export const StorageService = {
                     title: tab.title || 'Untitled',
                     url: tab.url || ''
                 };
-                // Only include description if it's not empty and not the same as title
                 if (tab.description && tab.description !== tab.title) {
                     tabData.description = tab.description;
                 }
@@ -44,19 +57,54 @@ export const StorageService = {
     },
 
     /**
-     * Save collections to local storage
+     * Save collections to local storage with version control
      * @param {Array} collections
-     * @param {boolean} [sort=true] - Whether to sort collections by createdAt in descending order
-     * @returns {Promise<Array>} The saved collections
+     * @param {boolean} [sort=true] - Whether to sort collections
+     * @param {number} [expectedVersion] - Expected version for optimistic locking
+     * @returns {Promise<{success: boolean, collections: Array, version: number}>}
      */
-    async saveToLocalStorage(collections, sort = true) {
+    async saveToLocalStorage(collections, sort = true, expectedVersion = null) {
         const formatted = this.prepareCollectionsForSaving(collections);
         const finalCollections = sort ? MipaUtils.sortCollections(formatted) : formatted;
         const now = Date.now();
+
+        if (expectedVersion !== null) {
+            const currentVersion = await this.getVersion();
+            if (currentVersion !== expectedVersion) {
+                const currentData = await chrome.storage.local.get(this.COLLECTIONS_KEY);
+                return {
+                    success: false,
+                    collections: currentData.collections || [],
+                    version: currentVersion,
+                    conflict: true
+                };
+            }
+        }
+
+        const newVersion = (expectedVersion || 0) + 1;
         await chrome.storage.local.set({
             collections: finalCollections,
-            lastModified: now
+            lastModified: now,
+            [this.VERSION_KEY]: newVersion
         });
-        return finalCollections;
+        this.lastKnownVersion = newVersion;
+
+        return {
+            success: true,
+            collections: finalCollections,
+            version: newVersion,
+            conflict: false
+        };
+    },
+
+    /**
+     * Force save without version check (for initial saves or when local is source of truth)
+     * @param {Array} collections
+     * @param {boolean} [sort=true]
+     * @returns {Promise<Array>}
+     */
+    async forceSave(collections, sort = true) {
+        const result = await this.saveToLocalStorage(collections, sort, null);
+        return result.collections;
     }
 };
