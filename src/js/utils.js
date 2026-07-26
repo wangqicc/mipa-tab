@@ -76,20 +76,124 @@ export const MipaUtils = {
     },
 
     /**
-     * Helper method to set up favicon with fallbacks
+     * Set up favicon with multi-source fallbacks and caching
      * @param {HTMLElement} faviconElement
      * @param {Object} tab
      */
     setupFavicon(faviconElement, tab) {
         faviconElement.alt = tab.title || '';
+        faviconElement.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><rect width=%2216%22 height=%2216%22 fill=%22%23666%22 rx=%222%22/><text x=%228%22 y=%2212%22 font-size=%2210%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22sans-serif%22>?</text></svg>';
+
         try {
             const hostname = new URL(tab.url).hostname;
-            faviconElement.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
-            faviconElement.onerror = function () {
-                this.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
-            };
+            faviconElement.dataset.faviconHost = hostname;
+
+            this.resolveFavicon(hostname).then((url) => {
+                if (faviconElement.dataset.faviconHost === hostname) {
+                    faviconElement.src = url;
+                }
+            });
         } catch (error) {
-            faviconElement.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+            // keep placeholder
         }
+    },
+
+    /**
+     * Extract meaningful search keywords from a URL (core domain only, excludes path noise)
+     * @param {string} url
+     * @returns {string} normalized string suitable for search matching
+     */
+    getUrlSearchText(url) {
+        try {
+            const u = new URL(url);
+            const hostname = u.hostname;
+
+            const thirdPartySuffixes = [
+                'googleapis.com', 'googleusercontent.com', 'gstatic.com',
+                'cloudfront.net', 'cloudflare.com', 'fastly.net',
+                'akamaihd.net', 'akamaized.net', 'amazonaws.com',
+                'github.io', 'githubusercontent.com', 'gitlab.io',
+                'medium.com', 'substack.com', 'notion.site',
+                'figma.com', 'slack.com', 'discord.com',
+                'gravatar.com', 'wp.com', 'wpengine.com',
+                'shopify.com', 'typeform.com', 'airtable.com',
+                'vercel.app', 'netlify.app', 'pages.dev',
+                'webflow.io', 'carrd.co', 'squarespace.com'
+            ];
+
+            let coreDomain = hostname.replace(/^www\./, '');
+
+            for (const suffix of thirdPartySuffixes) {
+                if (coreDomain.endsWith(suffix)) {
+                    coreDomain = coreDomain.slice(0, -suffix.length - 1);
+                    break;
+                }
+            }
+
+            if (coreDomain) {
+                const parts = coreDomain.split('.').filter(Boolean);
+                if (parts.length > 0) {
+                    coreDomain = parts.join(' ');
+                }
+            }
+
+            return coreDomain.toLowerCase().trim();
+        } catch (e) {
+            return '';
+        }
+    },
+
+    /**
+     * Favicon cache: hostname -> resolved URL (avoids repeated network requests)
+     */
+    _faviconCache: new Map(),
+
+    /**
+     * Resolve the best available favicon URL for a hostname with multi-source fallbacks
+     * @param {string} hostname
+     * @returns {Promise<string>} favicon URL
+     */
+    async resolveFavicon(hostname) {
+        if (this._faviconCache.has(hostname)) {
+            return this._faviconCache.get(hostname);
+        }
+
+        const sources = [
+            `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`,
+            `https://icons.duckduckgo.com/ip3/${hostname}.ico`,
+            `https://${hostname}/favicon.ico`
+        ];
+
+        let lastResolved = sources[0];
+
+        for (const src of sources) {
+            try {
+                const ok = await this._testImage(src);
+                if (ok) {
+                    lastResolved = src;
+                    break;
+                }
+            } catch (e) {
+                // try next source
+            }
+        }
+
+        this._faviconCache.set(hostname, lastResolved);
+        return lastResolved;
+    },
+
+    /**
+     * Test if an image URL loads successfully
+     * @param {string} url
+     * @returns {Promise<boolean>}
+     */
+    _testImage(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const timeout = setTimeout(() => resolve(false), 3000);
+            img.onload = () => { clearTimeout(timeout); resolve(true); };
+            img.onerror = () => { clearTimeout(timeout); resolve(false); };
+            img.src = url;
+        });
     }
 };

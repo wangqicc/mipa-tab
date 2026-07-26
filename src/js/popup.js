@@ -18,7 +18,9 @@ class MipaPopup {
     // Initialize the popup
     async init() {
         try {
-            // Load collections from storage
+            const savedTheme = localStorage.getItem('mipa-theme') || 'dark-warm';
+            document.body.setAttribute('data-theme', savedTheme);
+
             this.collections = await StorageService.loadCollections();
             this.filteredCollections = [...this.collections];
             // Bind event listeners
@@ -47,7 +49,7 @@ class MipaPopup {
             // Show error message in UI
             const container = document.getElementById('collections-list');
             if (container) {
-                container.innerHTML = '<div class="empty-state">Failed to load collections</div>';
+                container.innerHTML = '<div class="empty-state">加载集合失败</div>';
             }
         }
     }
@@ -79,7 +81,7 @@ class MipaPopup {
         if (!container) return;
         container.innerHTML = '';
         if (this.filteredCollections.length === 0) {
-            container.innerHTML = '<div class="empty-state">No collections found</div>';
+            container.innerHTML = '<div class="empty-state">暂无集合</div>';
             return;
         }
 
@@ -99,10 +101,6 @@ class MipaPopup {
             // Collection info
             const collectionInfo = document.createElement('div');
             collectionInfo.className = 'collection-info';
-            // Expander icon - removed for popup
-            const expander = document.createElement('span');
-            expander.className = 'collection-expander';
-            expander.textContent = '';
             // Collection name
             const name = document.createElement('span');
             name.className = 'collection-name';
@@ -110,7 +108,7 @@ class MipaPopup {
             // Tab count
             const tabCount = document.createElement('span');
             tabCount.className = 'collection-tab-count';
-            tabCount.textContent = `| ${collection.tabs.length} tabs`;
+            tabCount.textContent = `${collection.tabs.length} 个标签`;
             // Actions
             const actions = document.createElement('div');
             actions.className = 'collection-actions';
@@ -137,21 +135,20 @@ class MipaPopup {
                 // Tab already in collection, change icon and disable button
                 addTabBtn.className = 'add-tab-btn added';
                 addTabBtn.textContent = '✓';
-                addTabBtn.title = 'Tab already in collection';
+                addTabBtn.title = '标签已在此集合中';
                 addTabBtn.disabled = true;
             } else if (currentTab) {
                 addTabBtn.className = 'add-tab-btn';
                 addTabBtn.textContent = '+';
-                addTabBtn.title = 'Add tab';
+                addTabBtn.title = '添加标签';
                 addTabBtn.disabled = false;
             } else {
                 addTabBtn.className = 'add-tab-btn disabled';
                 addTabBtn.textContent = '+';
-                addTabBtn.title = 'No active tab';
+                addTabBtn.title = '无活动标签';
                 addTabBtn.disabled = true;
             }
 
-            collectionInfo.appendChild(expander);
             collectionInfo.appendChild(name);
             collectionInfo.appendChild(tabCount);
             actions.appendChild(addTabBtn);
@@ -222,7 +219,7 @@ class MipaPopup {
             if (currentTab) {
                 const mipaUrl = chrome.runtime.getURL('mipa.html');
                 if (currentTab.url === mipaUrl) {
-                    this.showMessage('Cannot add Mipa itself to collections!', 'error');
+                    this.showMessage('不能将 Mipa 本身添加到集合中！', 'error');
                     if (addTabBtn) {
                         addTabBtn.textContent = '+';
                         addTabBtn.disabled = false;
@@ -232,7 +229,7 @@ class MipaPopup {
                 const collection = this.collections.find((col) => col.id === collectionId);
                 if (collection) {
                     if (MipaUtils.isTabInCollection(collection, currentTab.url)) {
-                        this.showMessage('Tab already in collection!', 'error');
+                        this.showMessage('标签已在此集合中！', 'error');
                         if (addTabBtn) {
                             addTabBtn.textContent = '+';
                             addTabBtn.disabled = false;
@@ -250,13 +247,13 @@ class MipaPopup {
                     collection.tabs.push(tabData);
                     this.filterCollections();
                     await this.saveToStorageAndSync();
-                    this.showMessage('Tab saved successfully!');
+                    this.showMessage('标签保存成功！');
 
                     // 优先更新UI，让用户立即看到反馈
                     if (addTabBtn) {
                         addTabBtn.textContent = '✓';
                         addTabBtn.classList.add('added');
-                        addTabBtn.title = 'Tab already in collection';
+                        addTabBtn.title = '标签已在此集合中';
                     }
 
                     // 异步执行saveSession，不阻塞UI
@@ -265,7 +262,7 @@ class MipaPopup {
             }
         } catch (error) {
             console.error('Error adding tab to collection:', error);
-            this.showMessage('Error saving tab', 'error');
+            this.showMessage('保存标签时出错', 'error');
             if (addTabBtn) {
                 addTabBtn.textContent = '+';
                 addTabBtn.disabled = false;
@@ -315,7 +312,7 @@ class MipaPopup {
             // Get all tabs in the current window
             const allTabs = await chrome.tabs.query({ currentWindow: true });
             if (allTabs.length === 0) {
-                this.showMessage('No tabs to save!', 'error');
+                this.showMessage('没有可保存的标签！', 'error');
                 return;
             }
             // Create new collection with date+time name
@@ -379,7 +376,7 @@ class MipaPopup {
                 console.error('Gist同步失败:', error);
             });
 
-            this.showMessage('All tabs saved successfully!');
+            this.showMessage('所有标签保存成功！');
             // NEW APPROACH: Use a completely different method
             // 1. First, open mipa in the current window
             const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -395,7 +392,7 @@ class MipaPopup {
             }
         } catch (error) {
             console.error('Error saving all tabs:', error);
-            this.showMessage('Error saving tabs', 'error');
+            this.showMessage('保存标签时出错', 'error');
         }
     }
     // Open Mipa in a new tab or switch to existing one
@@ -420,9 +417,8 @@ class MipaPopup {
     }
     // Show notification message
     showMessage(message, type = 'success') {
-        // Create message element
         const messageDiv = document.createElement('div');
-        messageDiv.className = `toast-message ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+        messageDiv.className = `message-toast ${type}`;
 
         // Convert newlines to <br> tags and set as HTML
         messageDiv.innerHTML = message.replace(/\n/g, '<br>');

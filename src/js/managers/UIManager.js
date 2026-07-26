@@ -61,7 +61,7 @@ export class UIManager {
         
         const expander = document.createElement('span');
         expander.className = 'collection-expander';
-        expander.textContent = isExpanded ? '▼' : '▶';
+        expander.innerHTML = '<i class="fas fa-chevron-right"></i>';
         
         const nameContainer = document.createElement('div');
         nameContainer.className = 'collection-name-container';
@@ -110,7 +110,7 @@ export class UIManager {
 
         const tabCount = document.createElement('span');
         tabCount.className = 'collection-tab-count';
-        tabCount.textContent = ` | ${collection.tabs.length} tabs`;
+        tabCount.textContent = `${collection.tabs.length} 个标签`;
 
         titleContainer.appendChild(expander);
         titleContainer.appendChild(nameContainer);
@@ -160,9 +160,9 @@ export class UIManager {
 
         // Delete
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'btn-delete';
+        deleteBtn.className = 'btn-action btn-delete-col';
         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteBtn.dataset.tooltip = 'Delete Collection';
+        deleteBtn.dataset.tooltip = '删除集合';
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handlers.onRequestDeleteCollection?.(collection.id);
@@ -180,7 +180,7 @@ export class UIManager {
         btn.className = `btn-color-picker color-dot color-${collection.color}`;
         
         const dropdown = document.createElement('div');
-        dropdown.className = 'color-picker-dropdown';
+        dropdown.className = 'color-picker-dropdown hidden';
         
         ['white', 'gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].forEach(color => {
             const option = document.createElement('button');
@@ -194,8 +194,27 @@ export class UIManager {
         });
 
         container.addEventListener('click', e => e.stopPropagation());
-        btn.addEventListener('click', e => e.stopPropagation());
-        container.addEventListener('mouseleave', () => dropdown.classList.remove('hidden'));
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
+
+        let hideTimer = null;
+        container.addEventListener('mouseenter', () => {
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+        });
+        container.addEventListener('mouseleave', () => {
+            hideTimer = setTimeout(() => {
+                dropdown.classList.add('hidden');
+            }, 150);
+        });
+
+        document.addEventListener('click', () => {
+            dropdown.classList.add('hidden');
+        });
 
         container.appendChild(btn);
         container.appendChild(dropdown);
@@ -212,7 +231,7 @@ export class UIManager {
             grid.classList.add('grid-single-col');
             const msg = document.createElement('div');
             msg.className = 'empty-collection-message';
-            msg.textContent = 'Drag tabs here';
+            msg.textContent = '将标签页拖放到此处';
             grid.appendChild(msg);
         } else {
             const fragment = document.createDocumentFragment();
@@ -385,17 +404,21 @@ export class UIManager {
 
     updateCollectionCount(count) {
         const el = document.getElementById('collection-count');
-        if (el) el.textContent = `${count} collections`;
+        if (el) el.textContent = `${count} 个集合`;
     }
 
     setupFavicon(img, tab) {
+        if (this.handlers.setupFavicon) {
+            this.handlers.setupFavicon(img, tab);
+            return;
+        }
         img.alt = tab.title || '';
+        img.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><rect width=%2216%22 height=%2216%22 fill=%22%23666%22 rx=%222%22/><text x=%228%22 y=%2212%22 font-size=%2210%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22sans-serif%22>?</text></svg>';
         try {
             const hostname = new URL(tab.url).hostname;
             img.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
-            img.onerror = () => { img.src = 'https://icons.duckduckgo.com/ip3/example.com.ico'; };
         } catch {
-            img.src = 'https://icons.duckduckgo.com/ip3/example.com.ico';
+            // keep placeholder
         }
     }
 

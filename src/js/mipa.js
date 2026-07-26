@@ -183,7 +183,8 @@ class MipaTabManager {
     }
 
     bindEventListeners() {
-        // Toggle All
+        this.initThemeSwitcher();
+
         document.getElementById('toggle-collections')?.addEventListener('click', () => {
             const anyExpanded = Object.values(this.collectionExpansionStates).some((v) => v);
             const newState = !anyExpanded;
@@ -193,18 +194,23 @@ class MipaTabManager {
             this.render();
         });
 
-        // Search
         document.getElementById('collection-search')?.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
+            if (!query) {
+                this.render();
+                return;
+            }
             const filtered = this.collectionManager.getCollections().filter((c) => {
                 return (
                     c.name.toLowerCase().includes(query) ||
-                    c.tabs.some((t) => t.title.toLowerCase().includes(query) || t.url.toLowerCase().includes(query))
+                    c.tabs.some((t) => {
+                        return (
+                            t.title.toLowerCase().includes(query) ||
+                            MipaUtils.getUrlSearchText(t.url).includes(query)
+                        );
+                    })
                 );
             });
-            // Note: UIManager.renderCollections takes raw collections, filtering should be handled by logic or passing filtered list
-            // Here we just re-render with filtered list, but we need to be careful not to lose "real" list
-            // Better approach: have UIManager handle filtering or pass filtered list
             this.uiManager.renderCollections(filtered, this.collectionExpansionStates);
         });
 
@@ -294,6 +300,42 @@ class MipaTabManager {
         });
     }
 
+    initThemeSwitcher() {
+        const themeBtn = document.getElementById('theme-btn');
+        const themeDropdown = document.getElementById('theme-dropdown');
+        if (!themeBtn || !themeDropdown) return;
+
+        const savedTheme = localStorage.getItem('mipa-theme') || 'dark-warm';
+        this.applyTheme(savedTheme);
+
+        themeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            themeDropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            themeDropdown.classList.remove('show');
+        });
+
+        themeDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const option = e.target.closest('.theme-option');
+            if (option) {
+                const theme = option.dataset.theme;
+                this.applyTheme(theme);
+                themeDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    applyTheme(theme) {
+        document.body.setAttribute('data-theme', theme);
+        localStorage.setItem('mipa-theme', theme);
+        document.querySelectorAll('.theme-option').forEach((opt) => {
+            opt.classList.toggle('active', opt.dataset.theme === theme);
+        });
+    }
+
     async checkGistLoginStatus() {
         const btn = document.getElementById('connect-gist');
         if (!btn) return;
@@ -302,11 +344,11 @@ class MipaTabManager {
         const isLoggedIn = !!result.githubToken && !!result.gistId;
 
         if (isLoggedIn) {
-            btn.innerHTML = `<div class="connect-status"><i class="fa-solid fa-check-circle"></i><span>Gist Connected</span><span class="status-indicator"></span></div>`;
+            btn.innerHTML = `<div class="connect-status"><i class="fa-solid fa-check-circle"></i><span>已连接 Gist</span><span class="status-indicator"></span></div>`;
             btn.classList.add('btn-success-bg');
             btn.classList.remove('btn-primary-bg');
         } else {
-            btn.innerHTML = `<div class="connect-status"><i class="fa-brands fa-github"></i><span>Connect to Gist</span><span class="status-indicator not-synced"></span></div>`;
+            btn.innerHTML = `<div class="connect-status"><i class="fa-brands fa-github"></i><span>连接 Gist</span><span class="status-indicator not-synced"></span></div>`;
             btn.classList.add('btn-primary-bg');
             btn.classList.remove('btn-success-bg');
         }

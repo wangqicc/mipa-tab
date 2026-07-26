@@ -3,33 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mipa Tab Manager</title>
+    <title>Mipa 标签页管理器</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="popup">
+<body class="popup" data-theme="dark-warm">
     <div class="popup-container">
         <header class="popup-header">
-            <h1>Mipa Tab Manager</h1>
+            <h1>Mipa 标签页管理器</h1>
             <div class="header-buttons">
-                <button id="open-mipa-full" class="open-mipa-btn"><i class="fas fa-window-maximize"></i> OPEN MIPA</button>
+                <button id="open-mipa-full" class="open-mipa-btn"><i class="fas fa-window-maximize"></i> 打开主页</button>
             </div>
         </header>
         <div class="popup-main">
-            <!-- Right Column - Collections -->
             <div class="popup-right">
-                <!-- My Collection Section -->
                 <div class="my-collection-section">
                     <div class="search-container">
-                        <input type="text" id="collection-search" placeholder="Search for collections or spaces" class="collection-search-input">
+                        <input type="text" id="collection-search" placeholder="搜索集合..." class="collection-search-input">
                     </div>
                     <div class="my-collection-header">
-                        <h2 class="my-collection-title">My Collection</h2>
-                        <button class="my-collection-save-btn" title="Save all tabs to a new collection"><i class="fas fa-arrow-down"></i></button>
+                        <h2 class="my-collection-title">我的集合</h2>
+                        <button class="my-collection-save-btn" title="将所有标签页保存到新集合"><i class="fas fa-arrow-down"></i></button>
                     </div>
-                    <!-- Collections List -->
-                    <div id="collections-list" class="collections-list">
-                        <!-- Collections will be dynamically added here -->
-                    </div>
+                    <div id="collections-list" class="collections-list"></div>
                 </div>
             </div>
         </div>
