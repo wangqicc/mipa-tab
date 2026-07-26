@@ -28,7 +28,7 @@ class MipaPopup {
 
             // Add storage change listener for real-time sync from other sources
             chrome.storage.onChanged.addListener((changes, areaName) => {
-                if (areaName === 'local' && changes.collections) {
+                if (areaName === 'local' && (changes.mipaData || changes.collections)) {
                     const now = Date.now();
                     if (now - this.lastSaveTime < 500) {
                         return;
@@ -240,7 +240,7 @@ class MipaPopup {
                         return;
                     }
                     const tabData = {
-                        id: `tab-${Date.now()}`,
+                        id: MipaUtils.generateUUID(),
                         title: currentTab.title || 'Untitled',
                         url: currentTab.url || ''
                     };
@@ -328,42 +328,34 @@ class MipaPopup {
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             const collectionName = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
-            const collectionId = `collection-${Date.now()}`;
-            const nowIso = now.toISOString();
-            // Prepare tab data - exclude mipa.html itself and remove duplicates
             const tabDataArray = [];
             const processedUrls = new Set();
             allTabs
-                .filter((tab) => tab.url !== mipaUrl) // Skip mipa.html itself
+                .filter((tab) => tab.url !== mipaUrl)
                 .forEach((tab) => {
                     try {
-                        // Extract origin + pathname for better duplicate checking
                         const urlObj = new URL(tab.url);
                         const uniqueUrlKey = urlObj.origin + urlObj.pathname;
-                        // Only add if URL hasn't been processed yet
                         if (!processedUrls.has(uniqueUrlKey)) {
                             processedUrls.add(uniqueUrlKey);
                             const tabData = {
-                                id: `tab-${Date.now()}-${tab.id}`,
+                                id: MipaUtils.generateUUID(),
                                 title: tab.title || 'Untitled',
                                 url: tab.url || ''
                             };
-                            // Only include description if it's different from title
                             if (tab.description && tab.description !== tab.title) {
                                 tabData.description = tab.description;
                             }
                             tabDataArray.push(tabData);
                         }
                     } catch (error) {
-                        // Fallback for invalid URLs - use full URL for comparison
                         if (!processedUrls.has(tab.url)) {
                             processedUrls.add(tab.url);
                             const tabData = {
-                                id: `tab-${Date.now()}-${tab.id}`,
+                                id: MipaUtils.generateUUID(),
                                 title: tab.title || 'Untitled',
                                 url: tab.url || ''
                             };
-                            // Only include description if it's different from title
                             if (tab.description && tab.description !== tab.title) {
                                 tabData.description = tab.description;
                             }
@@ -371,23 +363,21 @@ class MipaPopup {
                         }
                     }
                 });
-            // Create new collection with only createdAt
             const newCollection = {
-                id: collectionId,
+                id: MipaUtils.generateUUID(),
                 name: collectionName,
                 color: 'blue',
-                createdAt: nowIso,
                 tabs: tabDataArray
             };
-            // Add to collections
             this.collections.push(newCollection);
-            this.collections = MipaUtils.sortCollections(this.collections);
             this.filterCollections();
             await this.renderCollections();
 
             this.lastSaveTime = Date.now();
             await StorageService.saveToLocalStorage(this.collections);
-            await GistService.syncWithGist(this.collections);
+            GistService.syncWithGist(this.collections).catch((error) => {
+                console.error('Gist同步失败:', error);
+            });
 
             this.showMessage('All tabs saved successfully!');
             // NEW APPROACH: Use a completely different method
