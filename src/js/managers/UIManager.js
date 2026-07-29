@@ -361,7 +361,7 @@ export class UIManager {
         expander.textContent = '▼';
         
         const title = document.createElement('h4');
-        title.textContent = `Window ${index}`;
+        title.textContent = `窗口 ${index}`;
 
         content.appendChild(expander);
         content.appendChild(title);
