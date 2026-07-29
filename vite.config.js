@@ -21,4 +21,8 @@ export default defineConfig({
       port: 5173,
     },
   },
+  test: {
+    root: '.',
+    include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+  },
 });
