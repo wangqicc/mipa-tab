@@ -32,7 +32,7 @@ jobs:
 
   release:
     needs: build
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,15 +53,6 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Generate tag name
-        id: tag
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=v$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Zip extension
         run: |
           cd dist
@@ -71,7 +62,5 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: Release ${{ steps.tag.outputs.tag }}
           files: mipa-tab.zip
           generate_release_notes: true
